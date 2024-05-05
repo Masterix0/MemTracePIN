@@ -12,7 +12,7 @@ using std::hex;
 using std::ofstream;
 using std::string;
 
-// Define the number of buffer pages
+// Define the number of buffer pages (4KB buffer)
 #define NUM_BUF_PAGES 1024
 
 /*
@@ -32,8 +32,8 @@ BUFFER_ID bufId;
  */
 struct MEMREF
 {
-    ADDRINT pc;
-    ADDRINT ea;
+    ADDRINT pc;      // The address of the instruction
+    ADDRINT ea;      // The effective address
     char accessType; // 'R' for read, 'W' for write
     UINT64 timestmp; // Timestamp
 };
@@ -76,12 +76,7 @@ VOID MLOG::DumpBufferToFile(struct MEMREF *reference, UINT64 numElements, THREAD
     {
         if (reference->ea != 0)
         {
-
-            // Print timestamp
-            std::cout << "Dumping to file (NORMAL): " << reference->timestmp << std::endl;
-            std::cout << "Dumping to file (CAST TO STRING): " << std::to_string(reference->timestmp) << std::endl;
-
-            _ofile << std::to_string(reference->timestmp) << "," << reference->accessType << "," << reference->ea << endl;
+            _ofile << reference->pc << "," << reference->timestmp << "," << reference->accessType << "," << reference->ea << endl;
         }
     }
 }
@@ -117,11 +112,17 @@ VOID Trace(TRACE trace, VOID *v)
             {
                 UINT64 timestamp = std::chrono::high_resolution_clock::now().time_since_epoch().count(); // Get current timestamp using std::chrono
 
-                // Print time stamp
-                std::cout << timestamp << std::endl;
-
-                // Note that if the operand is both read and written we log it once
-                // for each.
+                /* Note that if the operand is both read and written we log it once
+                 * for each.
+                 * INS_InsertFillBuffer() allows us to insert multiple fields into the buffer
+                 * in one call.  This is more efficient than calling INS_InsertFillBuffer()
+                 * once for each field.
+                 * Syntax is:
+                 * INS_InsertFillBuffer(instruction being instrumented, action filled before or after instruction,
+                 * bufferId, argument type, [optional IARG parameters like values],
+                 * offset in bytes from the start of the trace record to this field,
+                 * ..., IARG_END);
+                 */
                 if (INS_MemoryOperandIsRead(ins, memOp))
                 {
                     INS_InsertFillBuffer(ins, IPOINT_BEFORE, bufId, IARG_INST_PTR, offsetof(struct MEMREF, pc),
