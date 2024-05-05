@@ -13,7 +13,7 @@ using std::ofstream;
 using std::string;
 
 // Define the number of buffer pages
-#define NUM_BUF_PAGES 32
+#define NUM_BUF_PAGES 1024
 
 /*
  * Name of the output file
@@ -34,9 +34,8 @@ struct MEMREF
 {
     ADDRINT pc;
     ADDRINT ea;
-    UINT32 size;
-    char accessType;  // 'R' for read, 'W' for write
-    UINT64 timestamp; // Timestamp
+    char accessType; // 'R' for read, 'W' for write
+    UINT64 timestmp; // Timestamp
 };
 
 /*
@@ -76,7 +75,14 @@ VOID MLOG::DumpBufferToFile(struct MEMREF *reference, UINT64 numElements, THREAD
     for (UINT64 i = 0; i < numElements; i++, reference++)
     {
         if (reference->ea != 0)
-            _ofile << reference->accessType << "," << reference->ea << "," << reference->timestamp << endl;
+        {
+
+            // Print timestamp
+            std::cout << "Dumping to file (NORMAL): " << reference->timestmp << std::endl;
+            std::cout << "Dumping to file (CAST TO STRING): " << std::to_string(reference->timestmp) << std::endl;
+
+            _ofile << std::to_string(reference->timestmp) << "," << reference->accessType << "," << reference->ea << endl;
+        }
     }
 }
 
@@ -109,25 +115,25 @@ VOID Trace(TRACE trace, VOID *v)
 
             for (UINT32 memOp = 0; memOp < memoryOperands; memOp++)
             {
-                UINT32 refSize = INS_MemoryOperandSize(ins, memOp);
-                auto timestamp = std::chrono::system_clock::now().time_since_epoch().count(); // Get current timestamp using std::chrono
+                UINT64 timestamp = std::chrono::high_resolution_clock::now().time_since_epoch().count(); // Get current timestamp using std::chrono
+
+                // Print time stamp
+                std::cout << timestamp << std::endl;
 
                 // Note that if the operand is both read and written we log it once
                 // for each.
                 if (INS_MemoryOperandIsRead(ins, memOp))
                 {
                     INS_InsertFillBuffer(ins, IPOINT_BEFORE, bufId, IARG_INST_PTR, offsetof(struct MEMREF, pc),
-                                         IARG_MEMORYOP_EA, memOp, offsetof(struct MEMREF, ea), IARG_UINT32, refSize,
-                                         offsetof(struct MEMREF, size), IARG_UINT64, 'R', offsetof(struct MEMREF, accessType),
-                                         IARG_UINT64, timestamp, offsetof(struct MEMREF, timestamp), IARG_END);
+                                         IARG_MEMORYOP_EA, memOp, offsetof(struct MEMREF, ea), IARG_UINT64, 'R', offsetof(struct MEMREF, accessType),
+                                         IARG_UINT64, timestamp, offsetof(struct MEMREF, timestmp), IARG_END);
                 }
 
                 if (INS_MemoryOperandIsWritten(ins, memOp))
                 {
                     INS_InsertFillBuffer(ins, IPOINT_BEFORE, bufId, IARG_INST_PTR, offsetof(struct MEMREF, pc),
-                                         IARG_MEMORYOP_EA, memOp, offsetof(struct MEMREF, ea), IARG_UINT32, refSize,
-                                         offsetof(struct MEMREF, size), IARG_UINT64, 'W', offsetof(struct MEMREF, accessType),
-                                         IARG_UINT64, timestamp, offsetof(struct MEMREF, timestamp), IARG_END);
+                                         IARG_MEMORYOP_EA, memOp, offsetof(struct MEMREF, ea), IARG_UINT64, 'W', offsetof(struct MEMREF, accessType),
+                                         IARG_UINT64, timestamp, offsetof(struct MEMREF, timestmp), IARG_END);
                 }
             }
         }
