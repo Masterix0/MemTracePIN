@@ -1,10 +1,9 @@
 # MemTracePIN
-Simple memory tracing tool that uses Intel PIN to intercepts every memory access and records timestamp since the program started and memory address accessed, as well as access type.
+Simple memory tracing tool that uses Intel PIN to intercepts every memory access and records timestamp and memory address accessed, as well as access type.
 
 ## Output Format
 
 The output is a CSV file with the following columns:
-- Program Counter: Memory address of the instruction that accessed the memory
 - Timestamp: Time since the program started
 - Address: Memory address accessed
 - Access Type: Read or Write

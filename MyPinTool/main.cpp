@@ -32,7 +32,6 @@ BUFFER_ID bufId;
  */
 struct MEMREF
 {
-    ADDRINT pc;      // The address of the instruction
     ADDRINT ea;      // The effective address
     char accessType; // 'R' for read, 'W' for write
     UINT64 timestmp; // Timestamp
@@ -76,7 +75,7 @@ VOID MLOG::DumpBufferToFile(struct MEMREF *reference, UINT64 numElements, THREAD
     {
         if (reference->ea != 0)
         {
-            _ofile << reference->pc << "," << reference->timestmp << "," << reference->accessType << "," << reference->ea << endl;
+            _ofile << reference->timestmp << "," << reference->accessType << "," << reference->ea << endl;
         }
     }
 }
@@ -125,14 +124,14 @@ VOID Trace(TRACE trace, VOID *v)
                  */
                 if (INS_MemoryOperandIsRead(ins, memOp))
                 {
-                    INS_InsertFillBuffer(ins, IPOINT_BEFORE, bufId, IARG_INST_PTR, offsetof(struct MEMREF, pc),
+                    INS_InsertFillBuffer(ins, IPOINT_BEFORE, bufId,
                                          IARG_MEMORYOP_EA, memOp, offsetof(struct MEMREF, ea), IARG_UINT64, 'R', offsetof(struct MEMREF, accessType),
                                          IARG_UINT64, timestamp, offsetof(struct MEMREF, timestmp), IARG_END);
                 }
 
                 if (INS_MemoryOperandIsWritten(ins, memOp))
                 {
-                    INS_InsertFillBuffer(ins, IPOINT_BEFORE, bufId, IARG_INST_PTR, offsetof(struct MEMREF, pc),
+                    INS_InsertFillBuffer(ins, IPOINT_BEFORE, bufId,
                                          IARG_MEMORYOP_EA, memOp, offsetof(struct MEMREF, ea), IARG_UINT64, 'W', offsetof(struct MEMREF, accessType),
                                          IARG_UINT64, timestamp, offsetof(struct MEMREF, timestmp), IARG_END);
                 }
