@@ -12,8 +12,8 @@ using std::hex;
 using std::ofstream;
 using std::string;
 
-// Define the number of buffer pages (4KB buffer)
-#define NUM_BUF_PAGES 1024
+// Define the number of buffer pages (8KB buffer per thread)
+#define NUM_BUF_PAGES 2
 
 /*
  * Name of the output file

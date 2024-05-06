@@ -28,7 +28,8 @@ echo -e "\nexport PIN_ROOT=/opt/pin-3.30-98830-g1d7b601b3-gcc-linux" >> ~/.bashr
 Now you're ready to compile TracerPIN and install it:
 
 ```
-cd MyPinTool && make clean && mkdir -p obj-intel64 && make TARGET=intel64 obj-intel64/main.so
+cd MyPinTool;
+make clean && mkdir -p obj-intel64 && make TARGET=intel64 obj-intel64/main.so
 ```
 
 ## Usage
