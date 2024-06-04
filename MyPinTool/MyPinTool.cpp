@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <cstddef>
 #include <unistd.h>
+#include <sys/stat.h>
 #include "pin.H"
 #include <chrono>
 
@@ -14,11 +15,12 @@ using std::string;
 
 // Define the number of buffer pages (8KB buffer per thread)
 #define NUM_BUF_PAGES 2
+#define OUTPUT_DIR "output/"
 
 /*
  * Name of the output file
  */
-KNOB<string> KnobOutputFile(KNOB_MODE_WRITEONCE, "pintool", "o", "buffer.out", "output file");
+KNOB<string> KnobOutputFile(KNOB_MODE_WRITEONCE, "pintool", "o", OUTPUT_DIR "buffer.out", "output file");
 
 /*
  * The ID of the buffer
@@ -54,6 +56,18 @@ private:
 
 MLOG::MLOG(THREADID tid)
 {
+    // Ensure the output directory exists
+    struct stat info;
+    if (stat(OUTPUT_DIR, &info) != 0)
+    {
+        // Directory does not exist, create it
+        if (mkdir(OUTPUT_DIR, 0777) == -1)
+        {
+            cerr << "Error: could not create output directory." << endl;
+            exit(1);
+        }
+    }
+
     const string filename = KnobOutputFile.Value() + "." + decstr(getpid()) + "." + decstr(tid);
 
     _ofile.open(filename.c_str());

@@ -10,7 +10,6 @@
 #
 ##############################################################
 
-
 ##############################################################
 #
 # Test targets
@@ -83,3 +82,16 @@ SANITY_SUBSET := $(TEST_TOOL_ROOTS) $(TEST_ROOTS)
 # This section contains the build rules for all binaries that have special build rules.
 # See makefile.default.rules for the default build rules.
 
+output:
+	mkdir -p output
+
+clean-output:
+	rm -rf output
+
+obj-intel64:
+	mkdir -p obj-intel64
+
+clean-obj:
+	rm -rf obj-intel64
+
+.PHONY: output clean-output obj-intel64 clean-obj
