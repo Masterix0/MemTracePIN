@@ -30,3 +30,10 @@
 *.exe
 *.out
 *.app
+
+# PIN tool binaries and output
+MyPinTool/obj-intel64
+MyPinTool/output
+
+# Trace Analysis Tool binaries and output
+TraceAnalyzer/bin/*.class
