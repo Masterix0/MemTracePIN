@@ -20,20 +20,20 @@ make
 To run the trace analysis tool, use the following command:
 
 ```bash
-java -cp bin TraceAnalyzer <real_time_run_ms> <tracing_run_ms> <trace_directory> <real_time_interval_ms>
+java -cp bin TraceAnalyzer <real_time_interval_ms> <real_time_run_ms> <tracing_run_ms> <trace_directory>
 ```
 
 ## Arguments:
 
+ - **`real_time_interval_ms`**: Size of the real-time interval window in milliseconds.
  - **`real_time_run_ms`**: Total runtime of the real-time benchmark in milliseconds.
  - **`tracing_run_ms`**: Total runtime of the tracing run in milliseconds.
  - **`trace_directory`**: Directory where the trace files are located.
- - **`real_time_interval_ms`**: Size of the real-time interval window in milliseconds.
 
 ## Example
 
 ```bash
-java -cp bin TraceAnalyzer 12000 22750 /path/to/trace/files/ 5
+java -cp bin TraceAnalyzer 2 12 22750 /path/to/trace/files/
 ```
 
 ## Cleaning Up

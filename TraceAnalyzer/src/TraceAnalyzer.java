@@ -1,38 +1,35 @@
 import java.io.*;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class TraceAnalyzer {
+
+    // PIN tool uses per-thread buffer to store traces before dumping to file
+    // We use this constant to make sure we minimize missing traces if dumping
+    // wasn't sequential. Buffer is 8KB by default and each line is 27 bytes.
+    // So 8K / 27 ~= 300 lines.
+    public static final int BUF_LINES = 700;
 
     public static void main(String[] args) {
         if (args.length != 4) {
             System.out.println(
-                    "Usage: java TraceAnalyzer <real_runtime_ms> <trace_runtime_ms> <trace_dir> <interval_window_ms>");
+                    "Usage: java TraceAnalyzer <interval_window_ms> <real_runtime_ms> <trace_runtime_ms> <trace_dir>");
             return;
         }
 
-        long realRuntime = Long.parseLong(args[0]);
-        long traceRuntime = Long.parseLong(args[1]);
-        String traceDir = args[2];
-        long intervalWindowMs = Long.parseLong(args[3]);
+        long intervalWindowMs = Long.parseLong(args[0]);
+        long realRuntime = Long.parseLong(args[1]);
+        long traceRuntime = Long.parseLong(args[2]);
+        String traceDir = args[3];
 
         double slowdownFactor = (double) traceRuntime / realRuntime;
         long traceIntervalWindowMs = (long) (intervalWindowMs * slowdownFactor);
 
-        // Print 'slowdownFactor' and 'traceIntervalWindowMs'
-        System.out.println("slowdownFactor: " + slowdownFactor);
-        System.out.println("traceIntervalWindowMs: " + traceIntervalWindowMs);
-
-        // Print 'GOT HERE #'
-        System.out.println("GOT HERE #1");
+        // Print slowdown factor
+        System.out.println("Slowdown factor: " + slowdownFactor);
 
         try {
             List<File> traceFiles = getTraceFiles(traceDir);
-
-            // Print file names
-            for (File file : traceFiles) {
-                System.out.println(file.getName());
-            }
-
             long[] globalTimestamps = getGlobalTimestamps(traceFiles);
             long globalStartTimestamp = globalTimestamps[0];
             long globalEndTimestamp = globalTimestamps[1];
@@ -41,18 +38,15 @@ public class TraceAnalyzer {
             System.out.println("Global start timestamp: " + globalStartTimestamp);
             System.out.println("Global end timestamp: " + globalEndTimestamp);
 
-            // Find out how traceIntervalWindow in cpu cycles
-            long traceIntervalWindowTimeStamps = (globalEndTimestamp - globalStartTimestamp) / traceRuntime
+            // Convert interval in ms to interval in ticks used in timestamps
+            long traceIntervalWindowTicks = (globalEndTimestamp - globalStartTimestamp) / traceRuntime
                     * traceIntervalWindowMs;
 
-            // Print 'traceIntervalWindowTimeStamps'
-            System.out.println("traceIntervalWindowTimeStamps: " + traceIntervalWindowTimeStamps);
-
             long currentIntervalStart = globalStartTimestamp;
-            long currentIntervalEnd = globalStartTimestamp + traceIntervalWindowTimeStamps;
+            long currentIntervalEnd = globalStartTimestamp + traceIntervalWindowTicks;
 
-            System.out.println("GOT HERE #2");
-
+            // We only contemplate 'full' intervals, i.e., intervals that
+            // start and end within the global trace timestamps
             while (currentIntervalEnd <= globalEndTimestamp) {
                 IntervalAnalyzer intervalAnalyzer = new IntervalAnalyzer(traceFiles, currentIntervalStart,
                         currentIntervalEnd);
@@ -68,7 +62,7 @@ public class TraceAnalyzer {
                         "Interval " + currentIntervalStart + " - " + currentIntervalEnd + ": Accuracy = " + accuracy);
 
                 currentIntervalStart = currentIntervalEnd;
-                currentIntervalEnd = currentIntervalStart + traceIntervalWindowTimeStamps;
+                currentIntervalEnd = currentIntervalStart + traceIntervalWindowTicks;
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -76,8 +70,6 @@ public class TraceAnalyzer {
     }
 
     private static List<File> getTraceFiles(String dirPath) {
-        // Print dirPath
-        System.out.println("dirPath: " + dirPath);
 
         File dir = new File(dirPath);
         File[] files = dir.listFiles();
@@ -94,7 +86,7 @@ public class TraceAnalyzer {
             String line;
             int count = 0;
 
-            while ((line = reader.readLine()) != null && count < 4000) {
+            while ((line = reader.readLine()) != null && count < BUF_LINES) {
                 String[] parts = line.split(",");
                 long timestamp = Long.parseLong(parts[0], 16);
                 if (timestamp < globalStartTimestamp)
@@ -110,7 +102,7 @@ public class TraceAnalyzer {
             long fileLength = raf.length() - 1;
             raf.seek(fileLength);
 
-            for (int i = 0; i < 4000 && fileLength > 0; i++) {
+            for (int i = 0; i < BUF_LINES && fileLength > 0; i++) {
                 raf.seek(--fileLength);
                 if (raf.readByte() == '\n') {
                     String lastLine = raf.readLine();
@@ -130,20 +122,25 @@ public class TraceAnalyzer {
     }
 
     private static double calculateAccuracy(List<PageStats> estimated, List<PageStats> actual) {
-        int matches = 0;
-        for (PageStats estPage : estimated) {
-            for (PageStats actPage : actual) {
-                if (estPage.getPageId().equals(actPage.getPageId())) {
-                    matches++;
-                    break;
-                }
-            }
-        }
+
+        // We look at top half of pages
+        // TODO: double check one third is good
+        int topN = Math.min(estimated.size(), actual.size()) / 2;
+
+        Set<String> topEstimated = estimated.subList(0, topN).stream()
+                .map(PageStats::getPageId)
+                .collect(Collectors.toSet());
+        Set<String> topActual = actual.subList(0, topN).stream()
+                .map(PageStats::getPageId)
+                .collect(Collectors.toSet());
+
+        topEstimated.retainAll(topActual);
+        int matches = topEstimated.size();
 
         // Print matches and estimated size
         System.out.println("Matches: " + matches);
-        System.out.println("Estimated size: " + estimated.size());
+        System.out.println("Top third size: " + topN);
 
-        return (double) matches / estimated.size();
+        return (double) matches / topN;
     }
 }
