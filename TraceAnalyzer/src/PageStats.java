@@ -1,8 +1,9 @@
 public class PageStats {
 
     private String pageId;
-    private int accessCount;
+    private long accessCount;
     private long firstAccessTime;
+    private long PTSScore;
 
     public PageStats(String pageId) {
         this.pageId = pageId;
@@ -14,7 +15,7 @@ public class PageStats {
         return pageId;
     }
 
-    public int getAccessCount() {
+    public long getAccessCount() {
         return accessCount;
     }
 
@@ -28,5 +29,13 @@ public class PageStats {
 
     public void setFirstAccessTime(long firstAccessTime) {
         this.firstAccessTime = firstAccessTime;
+    }
+
+    public long getPTSScore() {
+        return PTSScore;
+    }
+
+    public void incrementPTSScore() {
+        this.PTSScore++;
     }
 }

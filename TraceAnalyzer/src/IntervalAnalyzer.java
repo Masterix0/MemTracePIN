@@ -75,7 +75,7 @@ public class IntervalAnalyzer {
 
     public List<PageStats> getHotPagesByTotalAccess() {
         List<PageStats> hotPages = new ArrayList<>(pageStatsMap.values());
-        hotPages.sort(Comparator.comparingInt(PageStats::getAccessCount).reversed());
+        hotPages.sort(Comparator.comparingLong(PageStats::getAccessCount).reversed());
         return hotPages;
     }
 }

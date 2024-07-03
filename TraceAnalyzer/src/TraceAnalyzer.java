@@ -9,6 +9,10 @@ public class TraceAnalyzer {
     // So 8K / 27 ~= 300 lines.
     public static final int BUF_LINES = 700;
 
+    // We use this constant to specify how long a PT scan takes in ms
+    // According to HeMem, should be between 0.1 and 100 ms
+    public static final float PTS_TIME = 1;
+
     public static void main(String[] args) {
         if (args.length != 4) {
             System.out.println(
@@ -39,6 +43,10 @@ public class TraceAnalyzer {
 
             // Convert interval in ms to interval in ticks used in timestamps
             long traceIntervalWindowTicks = (globalEndTimestamp - globalStartTimestamp) / traceRuntime
+                    * traceIntervalWindowMs;
+
+            // Convert PT scan time to ticks
+            long PTSTimeTicks = (globalEndTimestamp - globalStartTimestamp) / traceRuntime
                     * traceIntervalWindowMs;
 
             long currentIntervalStart = globalStartTimestamp;
