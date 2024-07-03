@@ -31,9 +31,11 @@
 *.out
 *.app
 
-# PIN tool binaries and output
+# PIN tool binaries, output and sorted
 MyPinTool/obj-intel64
 MyPinTool/output
+MyPinTool/sorted
 
 # Trace Analysis Tool binaries and output
 TraceAnalyzer/bin/*.class
+MyPinTool/pin.log

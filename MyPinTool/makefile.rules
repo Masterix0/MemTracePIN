@@ -85,8 +85,14 @@ SANITY_SUBSET := $(TEST_TOOL_ROOTS) $(TEST_ROOTS)
 output:
 	mkdir -p output
 
+sorted:
+	mkdir -p sorted
+
 clean-output:
 	rm -rf output
+
+clean-sorted:
+	rm -rf sorted
 
 obj-intel64:
 	mkdir -p obj-intel64

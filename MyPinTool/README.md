@@ -42,10 +42,16 @@ The output is a CSV file with the following columns:
 To run the tool, use the following command:
 
 ```bash
-setarch x86_64 -R $PIN_ROOT/pin -ifeellucky -t ./obj-intel64/MyPinTool.so -- <executable_name>
+./run_and_sort.sh <executable_and_arguments>
 ```
 
-Replace `<executable_name>` with the name of the executable you want to trace.
+Replace `<executable_and_arguments>` with the executable and arguments you want to trace.
+
+This will run the tracer and save the output to the `output` directory.
+It will then the trace execution time to terminal.
+Finally, the output will be sorted and saved to the `sorted` directory, with the original files being deleted.
+
+The output files will be sorted by timestamp, using the gnu/unix `sort` command.
 
 
 ## Cleaning Up
@@ -56,4 +62,4 @@ To clean the build artifacts, use:
 make clean
 ```
 
-This will remove the `obj-intel64` directory and the `output` directory where the trace files are stored.
+This will remove the `obj-intel64` directory, the `output` directory and the `sorted` directory.
