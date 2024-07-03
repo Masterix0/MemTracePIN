@@ -1,6 +1,5 @@
 import java.io.*;
 import java.util.*;
-import java.util.stream.Collectors;
 
 public class TraceAnalyzer {
 
@@ -57,9 +56,11 @@ public class TraceAnalyzer {
                 List<PageStats> actualHotPages = intervalAnalyzer.getHotPagesByTotalAccess();
 
                 // Compare rankings and calculate accuracy
-                double accuracy = calculateAccuracy(estimatedHotPages, actualHotPages);
+                HitRatioStats hitRatios = calculateAccuracy(estimatedHotPages, actualHotPages);
                 System.out.println(
-                        "Interval " + currentIntervalStart + " - " + currentIntervalEnd + ": Accuracy = " + accuracy);
+                        "<Interval " + currentIntervalStart + " - " + currentIntervalEnd + ">");
+                System.out.println("Actual hit ratio: " + hitRatios.getActualHitRatio());
+                System.out.println("Estimated hit ratio: " + hitRatios.getEstimatedHitRatio());
 
                 currentIntervalStart = currentIntervalEnd;
                 currentIntervalEnd = currentIntervalStart + traceIntervalWindowTicks;
@@ -121,26 +122,26 @@ public class TraceAnalyzer {
         return new long[] { globalStartTimestamp, globalEndTimestamp };
     }
 
-    private static double calculateAccuracy(List<PageStats> estimated, List<PageStats> actual) {
+    private static HitRatioStats calculateAccuracy(List<PageStats> estimated, List<PageStats> actual) {
 
         // We look at top half of pages
         // TODO: double check one third is good
         int topN = Math.min(estimated.size(), actual.size()) / 2;
 
-        Set<String> topEstimated = estimated.subList(0, topN).stream()
-                .map(PageStats::getPageId)
-                .collect(Collectors.toSet());
-        Set<String> topActual = actual.subList(0, topN).stream()
-                .map(PageStats::getPageId)
-                .collect(Collectors.toSet());
+        List<PageStats> topEstimated = estimated.subList(0, topN);
+        List<PageStats> topActual = actual.subList(0, topN);
 
-        topEstimated.retainAll(topActual);
-        int matches = topEstimated.size();
+        // Calculate total accesses of all pages
+        long totalAccesses = actual.stream().mapToLong(PageStats::getAccessCount).sum();
 
-        // Print matches and estimated size
-        System.out.println("Matches: " + matches);
-        System.out.println("Top third size: " + topN);
+        // Calculate total accesses of top N pages
+        long topActualAccesses = topActual.stream().mapToLong(PageStats::getAccessCount).sum();
+        long topEstimatedAccesses = topEstimated.stream().mapToLong(PageStats::getAccessCount).sum();
 
-        return (double) matches / topN;
+        // Calculate DRAM hit ratio of top N pages
+        double hitRatioActual = (double) topActualAccesses / totalAccesses;
+        double hitRatioEstimated = (double) topEstimatedAccesses / totalAccesses;
+
+        return new HitRatioStats(hitRatioActual, hitRatioEstimated);
     }
 }
