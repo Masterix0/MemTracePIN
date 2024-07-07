@@ -9,6 +9,7 @@ public class IntervalAnalyzer {
     private long intervalEnd;
     private Map<String, PageStats> pageStatsMap;
     private Map<File, Long> filePositions;
+    private int lineLength = -1;
 
     public IntervalAnalyzer(List<File> traceFiles) {
         this.traceFiles = traceFiles;
@@ -18,6 +19,15 @@ public class IntervalAnalyzer {
         // Initialize file positions to the start of each file
         for (File file : traceFiles) {
             filePositions.put(file, 0L);
+        }
+
+        // Get the length of the first line in the first file
+        if (!traceFiles.isEmpty()) {
+            try (BufferedReader reader = new BufferedReader(new FileReader(traceFiles.get(0)))) {
+                lineLength = reader.readLine().length() + 1; // +1 for the newline character
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
     }
 
@@ -51,9 +61,8 @@ public class IntervalAnalyzer {
         long filePosition = filePositions.get(file);
         try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
             // Skip lines until reaching the last position
-            for (long i = 0; i < filePosition; i++) {
-                reader.readLine();
-            }
+            long bytesToSkip = filePosition * lineLength;
+            reader.skip(bytesToSkip);
 
             String line;
             while ((line = reader.readLine()) != null) {
