@@ -52,6 +52,17 @@ public class TraceAnalyzer {
             long currentIntervalStart = globalStartTimestamp;
             long currentIntervalEnd = globalStartTimestamp + traceIntervalWindowTicks;
 
+            // Create the output directory if it doesn't exist
+            File outputDir = new File("output");
+            if (!outputDir.exists()) {
+                outputDir.mkdir();
+            }
+
+            // Initialize CSV writer
+            BufferedWriter csvWriter = new BufferedWriter(new FileWriter("output/trace_analysis_results.csv"));
+            csvWriter.write(
+                    "interval_start_timestamp,interval_end_timestamp,number_of_pages_accessed,total_access_count,actual_accesses_dram_hit_ratio,estimated_dram_hit_ratio,pts_dram_hit_ratio\n");
+
             // We only contemplate 'full' intervals, i.e., intervals that
             // start and end within the global trace timestamps
             IntervalAnalyzer intervalAnalyzer = new IntervalAnalyzer(traceFiles, tracePTSWindowTicks);
@@ -70,11 +81,12 @@ public class TraceAnalyzer {
                         "<Interval " + currentIntervalStart + " - " + currentIntervalEnd + ">");
 
                 // Print number of pages accessed in interval
-                System.out.println("Number of pages accessed: " + actualHotPages.size());
+                long numberOfPagesAccessed = hitRatios.getNumPagesAccessed();
+                System.out.println("Number of pages accessed: " + numberOfPagesAccessed);
 
                 // If number of pages accessed is bigger than 0, print hit ratios rounded to 3
                 // decimal places
-                if (actualHotPages.size() > 0) {
+                if (numberOfPagesAccessed > 0) {
                     double actualHitRatioRounded = BigDecimal.valueOf(hitRatios.getActualHitRatio())
                             .setScale(3, RoundingMode.HALF_UP)
                             .doubleValue();
@@ -90,6 +102,13 @@ public class TraceAnalyzer {
                     System.out.println("Actual hit ratio: " + actualHitRatioRounded);
                     System.out.println("Estimated hit ratio: " + estimatedHitRatioRounded);
                     System.out.println("PTS hit ratio: " + ptsHitRatioRounded);
+
+                    // Write to CSV
+                    long totalAccessCount = hitRatios.getNumAccesses();
+                    csvWriter.write(currentIntervalStart + "," + currentIntervalEnd + "," + numberOfPagesAccessed + ","
+                            + totalAccessCount + "," + hitRatios.getActualHitRatio() + ","
+                            + hitRatios.getEstimatedHitRatio() + ","
+                            + hitRatios.getPTSHitRatio() + "\n");
                 } else {
                     // If no pages were accessed, don't print hit ratios and print a message
                     System.out.println("No pages accessed in this interval");
@@ -98,6 +117,8 @@ public class TraceAnalyzer {
                 currentIntervalStart = currentIntervalEnd;
                 currentIntervalEnd = currentIntervalStart + traceIntervalWindowTicks;
             }
+
+            csvWriter.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -179,6 +200,6 @@ public class TraceAnalyzer {
         double hitRatioEstimated = (double) topEstimatedAccesses / totalAccesses;
         double hitRatioPTS = (double) topPTSAccesses / totalAccesses;
 
-        return new HitRatioStats(hitRatioActual, hitRatioEstimated, hitRatioPTS);
+        return new HitRatioStats(hitRatioActual, hitRatioEstimated, hitRatioPTS, actual.size(), totalAccesses);
     }
 }

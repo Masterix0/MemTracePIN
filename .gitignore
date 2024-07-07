@@ -35,7 +35,8 @@
 MyPinTool/obj-intel64
 MyPinTool/output
 MyPinTool/sorted
+MyPinTool/pin.log
 
 # Trace Analysis Tool binaries and output
 TraceAnalyzer/bin/*.class
-MyPinTool/pin.log
+TraceAnalyzer/output
