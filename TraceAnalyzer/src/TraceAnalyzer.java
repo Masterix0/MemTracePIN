@@ -119,6 +119,9 @@ public class TraceAnalyzer {
             }
 
             csvWriter.close();
+
+            // Calculate overall DRAM hit ratios
+            calculateOverallDRAMHitRatios("output/trace_analysis_results.csv");
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -201,5 +204,52 @@ public class TraceAnalyzer {
         double hitRatioPTS = (double) topPTSAccesses / totalAccesses;
 
         return new HitRatioStats(hitRatioActual, hitRatioEstimated, hitRatioPTS, actual.size(), totalAccesses);
+    }
+
+    private static void calculateOverallDRAMHitRatios(String csvFilePath) {
+        long totalAccessCount = 0;
+        double totalActualHits = 0;
+        double totalEstimatedHits = 0;
+        double totalPTSHits = 0;
+
+        try (BufferedReader reader = new BufferedReader(new FileReader(csvFilePath))) {
+            String line;
+            reader.readLine(); // Skip header
+
+            while ((line = reader.readLine()) != null) {
+                String[] parts = line.split(",");
+                long intervalAccessCount = Long.parseLong(parts[3]);
+                double actualHitRatio = Double.parseDouble(parts[4]);
+                double estimatedHitRatio = Double.parseDouble(parts[5]);
+                double ptsHitRatio = Double.parseDouble(parts[6]);
+
+                totalAccessCount += intervalAccessCount;
+                totalActualHits += intervalAccessCount * actualHitRatio;
+                totalEstimatedHits += intervalAccessCount * estimatedHitRatio;
+                totalPTSHits += intervalAccessCount * ptsHitRatio;
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        double overallActualHitRatio = totalActualHits / totalAccessCount;
+        double overallEstimatedHitRatio = totalEstimatedHits / totalAccessCount;
+        double overallPTSHitRatio = totalPTSHits / totalAccessCount;
+
+        double overallActualHitRatioRounded = BigDecimal.valueOf(overallActualHitRatio)
+                .setScale(3, RoundingMode.HALF_UP)
+                .doubleValue();
+        double overallEstimatedHitRatioRounded = BigDecimal.valueOf(overallEstimatedHitRatio)
+                .setScale(3, RoundingMode.HALF_UP)
+                .doubleValue();
+        double overallPTSHitRatioRounded = BigDecimal.valueOf(overallPTSHitRatio)
+                .setScale(3, RoundingMode.HALF_UP)
+                .doubleValue();
+
+        System.out.println("\n---------------------------------------------\n");
+        System.out.println("Overall DRAM Hit Ratios:");
+        System.out.println("Actual: " + overallActualHitRatioRounded);
+        System.out.println("Estimated: " + overallEstimatedHitRatioRounded);
+        System.out.println("PTS: " + overallPTSHitRatioRounded);
     }
 }
