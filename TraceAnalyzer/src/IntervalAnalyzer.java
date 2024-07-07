@@ -8,15 +8,24 @@ public class IntervalAnalyzer {
     private long intervalStart;
     private long intervalEnd;
     private Map<String, PageStats> pageStatsMap;
+    private Map<File, Long> filePositions;
 
-    public IntervalAnalyzer(List<File> traceFiles, long intervalStart, long intervalEnd) {
+    public IntervalAnalyzer(List<File> traceFiles) {
         this.traceFiles = traceFiles;
-        this.intervalStart = intervalStart;
-        this.intervalEnd = intervalEnd;
         this.pageStatsMap = new ConcurrentHashMap<>();
+        this.filePositions = new HashMap<>();
+
+        // Initialize file positions to the start of each file
+        for (File file : traceFiles) {
+            filePositions.put(file, 0L);
+        }
     }
 
-    public void analyzeInterval() throws IOException {
+    public void analyzeInterval(long intervalStart, long intervalEnd) throws IOException {
+        this.intervalStart = intervalStart;
+        this.intervalEnd = intervalEnd;
+        this.pageStatsMap.clear();
+
         ExecutorService executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
         List<Future<Void>> futures = new ArrayList<>();
 
@@ -39,32 +48,42 @@ public class IntervalAnalyzer {
     }
 
     private void analyzeFile(File file) throws IOException {
-        BufferedReader reader = new BufferedReader(new FileReader(file));
-        String line;
+        long filePosition = filePositions.get(file);
+        try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
+            // Skip lines until reaching the last position
+            for (long i = 0; i < filePosition; i++) {
+                reader.readLine();
+            }
 
-        while ((line = reader.readLine()) != null) {
-            String[] parts = line.split(",");
-            long timestamp = Long.parseLong(parts[0], 16);
-            if (timestamp < intervalStart)
-                continue;
-            if (timestamp > intervalEnd)
-                break;
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] parts = line.split(",");
+                long timestamp = Long.parseLong(parts[0], 16);
 
-            String pageId = parts[2];
-
-            pageStatsMap.compute(pageId, (k, v) -> {
-                if (v == null) {
-                    v = new PageStats(pageId);
+                if (timestamp > intervalEnd) {
+                    break;
                 }
-                v.incrementAccessCount();
-                if (timestamp < v.getFirstAccessTime()) {
-                    v.setFirstAccessTime(timestamp);
+
+                if (timestamp >= intervalStart) {
+                    String pageId = parts[2];
+
+                    pageStatsMap.compute(pageId, (k, v) -> {
+                        if (v == null) {
+                            v = new PageStats(pageId);
+                        }
+                        v.incrementAccessCount();
+                        if (timestamp < v.getFirstAccessTime()) {
+                            v.setFirstAccessTime(timestamp);
+                        }
+                        return v;
+                    });
                 }
-                return v;
-            });
+
+                filePosition++;
+            }
+
+            filePositions.put(file, filePosition);
         }
-
-        reader.close();
     }
 
     public List<PageStats> getHotPagesByFirstAccess() {

@@ -54,12 +54,12 @@ public class TraceAnalyzer {
             long currentIntervalStart = globalStartTimestamp;
             long currentIntervalEnd = globalStartTimestamp + traceIntervalWindowTicks;
 
+            IntervalAnalyzer intervalAnalyzer = new IntervalAnalyzer(traceFiles);
+
             // We only contemplate 'full' intervals, i.e., intervals that
             // start and end within the global trace timestamps
             while (currentIntervalEnd <= globalEndTimestamp) {
-                IntervalAnalyzer intervalAnalyzer = new IntervalAnalyzer(traceFiles, currentIntervalStart,
-                        currentIntervalEnd);
-                intervalAnalyzer.analyzeInterval();
+                intervalAnalyzer.analyzeInterval(currentIntervalStart, currentIntervalEnd);
 
                 // Collect and compare hot pages
                 List<PageStats> estimatedHotPages = intervalAnalyzer.getHotPagesByFirstAccess();
@@ -70,7 +70,7 @@ public class TraceAnalyzer {
                 System.out.println(
                         "<Interval " + currentIntervalStart + " - " + currentIntervalEnd + ">");
 
-                // Print number of pages accesed in interval
+                // Print number of pages accessed in interval
                 System.out.println("Number of pages accessed: " + actualHotPages.size());
 
                 // If number of pages accessed is bigger than 0, print hit ratios rounded to 3
