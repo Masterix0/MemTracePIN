@@ -10,9 +10,11 @@ public class IntervalAnalyzer {
     private Map<String, PageStats> pageStatsMap;
     private Map<File, Long> filePositions;
     private int lineLength = -1;
+    private long subIntervalDuration; // Duration of each sub-interval for PTS scoring
 
-    public IntervalAnalyzer(List<File> traceFiles) {
+    public IntervalAnalyzer(List<File> traceFiles, long subIntervalDuration) {
         this.traceFiles = traceFiles;
+        this.subIntervalDuration = subIntervalDuration;
         this.pageStatsMap = new ConcurrentHashMap<>();
         this.filePositions = new HashMap<>();
 
@@ -84,6 +86,11 @@ public class IntervalAnalyzer {
                         if (timestamp < v.getFirstAccessTime()) {
                             v.setFirstAccessTime(timestamp);
                         }
+
+                        // Calculate sub-interval index
+                        int subIntervalIndex = (int) ((timestamp - intervalStart) / subIntervalDuration);
+                        v.incrementPTSScore(subIntervalIndex);
+
                         return v;
                     });
                 }
@@ -104,6 +111,12 @@ public class IntervalAnalyzer {
     public List<PageStats> getHotPagesByTotalAccess() {
         List<PageStats> hotPages = new ArrayList<>(pageStatsMap.values());
         hotPages.sort(Comparator.comparingLong(PageStats::getAccessCount).reversed());
+        return hotPages;
+    }
+
+    public List<PageStats> getHotPagesByPTSScore() {
+        List<PageStats> hotPages = new ArrayList<>(pageStatsMap.values());
+        hotPages.sort(Comparator.comparingLong(PageStats::getPTSScore).reversed());
         return hotPages;
     }
 }

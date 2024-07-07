@@ -1,10 +1,12 @@
 public class HitRatioStats {
     double actualHitRatio;
     double estimatedHitRatio;
+    double ptsHitRatio;
 
-    public HitRatioStats(double actualHitRatio, double estimatedHitRatio) {
+    public HitRatioStats(double actualHitRatio, double estimatedHitRatio, double ptsHitRatio) {
         this.actualHitRatio = actualHitRatio;
         this.estimatedHitRatio = estimatedHitRatio;
+        this.ptsHitRatio = ptsHitRatio;
     }
 
     public double getActualHitRatio() {
@@ -21,5 +23,13 @@ public class HitRatioStats {
 
     public void setEstimatedHitRatio(double estimatedHitRatio) {
         this.estimatedHitRatio = estimatedHitRatio;
+    }
+
+    public double getPTSHitRatio() {
+        return ptsHitRatio;
+    }
+
+    public void setPTSHitRatio(double ptsHitRatio) {
+        this.ptsHitRatio = ptsHitRatio;
     }
 }
