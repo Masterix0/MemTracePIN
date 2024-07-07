@@ -1,22 +1,18 @@
 import java.io.*;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.*;
 
 public class TraceAnalyzer {
-
-    // PIN tool uses per-thread buffer to store traces before dumping to file
-    // We use this constant to make sure we minimize missing traces if dumping
-    // wasn't sequential. Buffer is 8KB by default and each line is 27 bytes.
-    // So 8K / 27 ~= 300 lines.
-    public static final int BUF_LINES = 700;
 
     // We use this constant to specify how long a PT scan takes in ms
     // According to HeMem, should be between 0.1 and 100 ms
     public static final float PTS_TIME = 1;
 
     public static void main(String[] args) {
-        if (args.length != 4) {
+        if (args.length != 5) {
             System.out.println(
-                    "Usage: java TraceAnalyzer <interval_window_ms> <real_runtime_ms> <trace_runtime_ms> <trace_dir>");
+                    "Usage: java TraceAnalyzer <interval_window_ms> <real_runtime_ms> <trace_runtime_ms> <trace_dir> <dram_percentage>");
             return;
         }
 
@@ -24,6 +20,12 @@ public class TraceAnalyzer {
         long realRuntime = Long.parseLong(args[1]);
         long traceRuntime = Long.parseLong(args[2]);
         String traceDir = args[3];
+        double dramPercentage = Double.parseDouble(args[4]);
+
+        if (dramPercentage <= 0 || dramPercentage > 1) {
+            System.out.println("DRAM percentage must be between 0 and 1 (exclusive)");
+            return;
+        }
 
         double slowdownFactor = (double) traceRuntime / realRuntime;
         long traceIntervalWindowMs = (long) (intervalWindowMs * slowdownFactor);
@@ -64,11 +66,30 @@ public class TraceAnalyzer {
                 List<PageStats> actualHotPages = intervalAnalyzer.getHotPagesByTotalAccess();
 
                 // Compare rankings and calculate accuracy
-                HitRatioStats hitRatios = calculateAccuracy(estimatedHotPages, actualHotPages);
+                HitRatioStats hitRatios = calculateAccuracy(estimatedHotPages, actualHotPages, dramPercentage);
                 System.out.println(
                         "<Interval " + currentIntervalStart + " - " + currentIntervalEnd + ">");
-                System.out.println("Actual hit ratio: " + hitRatios.getActualHitRatio());
-                System.out.println("Estimated hit ratio: " + hitRatios.getEstimatedHitRatio());
+
+                // Print number of pages accesed in interval
+                System.out.println("Number of pages accessed: " + actualHotPages.size());
+
+                // If number of pages accessed is bigger than 0, print hit ratios rounded to 3
+                // decimal places
+                if (actualHotPages.size() > 0) {
+                    double actualHitRatioRounded = BigDecimal.valueOf(hitRatios.getActualHitRatio())
+                            .setScale(3, RoundingMode.HALF_UP)
+                            .doubleValue();
+
+                    double estimatedHitRatioRounded = BigDecimal.valueOf(hitRatios.getEstimatedHitRatio())
+                            .setScale(3, RoundingMode.HALF_UP)
+                            .doubleValue();
+
+                    System.out.println("Actual hit ratio: " + actualHitRatioRounded);
+                    System.out.println("Estimated hit ratio: " + estimatedHitRatioRounded);
+                } else {
+                    // If no pages were accessed, don't print hit ratios and print a message
+                    System.out.println("No pages accessed in this interval");
+                }
 
                 currentIntervalStart = currentIntervalEnd;
                 currentIntervalEnd = currentIntervalStart + traceIntervalWindowTicks;
@@ -93,36 +114,36 @@ public class TraceAnalyzer {
         for (File file : traceFiles) {
             BufferedReader reader = new BufferedReader(new FileReader(file));
             String line;
-            int count = 0;
 
-            while ((line = reader.readLine()) != null && count < BUF_LINES) {
+            // Read the first line
+            if ((line = reader.readLine()) != null) {
                 String[] parts = line.split(",");
                 long timestamp = Long.parseLong(parts[0], 16);
                 if (timestamp < globalStartTimestamp)
                     globalStartTimestamp = timestamp;
-                if (timestamp > globalEndTimestamp)
-                    globalEndTimestamp = timestamp;
-                count++;
             }
 
             reader.close();
 
+            // Read the last line
             RandomAccessFile raf = new RandomAccessFile(file, "r");
             long fileLength = raf.length() - 1;
             raf.seek(fileLength);
 
-            for (int i = 0; i < BUF_LINES && fileLength > 0; i++) {
-                raf.seek(--fileLength);
+            // Move to the beginning of the last line
+            while (fileLength > 0) {
+                fileLength--;
+                raf.seek(fileLength);
                 if (raf.readByte() == '\n') {
-                    String lastLine = raf.readLine();
-                    String[] parts = lastLine.split(",");
-                    long timestamp = Long.parseLong(parts[0], 16);
-                    if (timestamp < globalStartTimestamp)
-                        globalStartTimestamp = timestamp;
-                    if (timestamp > globalEndTimestamp)
-                        globalEndTimestamp = timestamp;
+                    break;
                 }
             }
+
+            String lastLine = raf.readLine();
+            String[] parts = lastLine.split(",");
+            long timestamp = Long.parseLong(parts[0], 16);
+            if (timestamp > globalEndTimestamp)
+                globalEndTimestamp = timestamp;
 
             raf.close();
         }
@@ -130,11 +151,11 @@ public class TraceAnalyzer {
         return new long[] { globalStartTimestamp, globalEndTimestamp };
     }
 
-    private static HitRatioStats calculateAccuracy(List<PageStats> estimated, List<PageStats> actual) {
+    private static HitRatioStats calculateAccuracy(List<PageStats> estimated, List<PageStats> actual,
+            double dramPercentage) {
 
-        // We look at top half of pages
-        // TODO: double check one third is good
-        int topN = Math.min(estimated.size(), actual.size()) / 2;
+        // We look at the top DRAM percentage of pages
+        int topN = (int) Math.ceil(Math.min(estimated.size(), actual.size()) * dramPercentage);
 
         List<PageStats> topEstimated = estimated.subList(0, topN);
         List<PageStats> topActual = actual.subList(0, topN);

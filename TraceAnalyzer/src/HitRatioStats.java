@@ -1,6 +1,3 @@
-import java.math.BigDecimal;
-import java.math.RoundingMode;
-
 public class HitRatioStats {
     double actualHitRatio;
     double estimatedHitRatio;
@@ -11,9 +8,7 @@ public class HitRatioStats {
     }
 
     public double getActualHitRatio() {
-        return BigDecimal.valueOf(actualHitRatio)
-                .setScale(3, RoundingMode.HALF_UP)
-                .doubleValue();
+        return actualHitRatio;
     }
 
     public void setActualHitRatio(double actualHitRatio) {
@@ -21,9 +16,7 @@ public class HitRatioStats {
     }
 
     public double getEstimatedHitRatio() {
-        return BigDecimal.valueOf(estimatedHitRatio)
-                .setScale(3, RoundingMode.HALF_UP)
-                .doubleValue();
+        return estimatedHitRatio;
     }
 
     public void setEstimatedHitRatio(double estimatedHitRatio) {

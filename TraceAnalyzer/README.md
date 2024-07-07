@@ -20,7 +20,7 @@ make
 To run the trace analysis tool, use the following command:
 
 ```bash
-java -cp bin TraceAnalyzer <real_time_interval_ms> <real_time_run_ms> <tracing_run_ms> <trace_directory>
+java -cp bin TraceAnalyzer <real_time_interval_ms> <real_time_run_ms> <tracing_run_ms> <trace_directory> <dram_percentage>
 ```
 
 ## Arguments:
@@ -29,6 +29,7 @@ java -cp bin TraceAnalyzer <real_time_interval_ms> <real_time_run_ms> <tracing_r
  - **`real_time_run_ms`**: Total runtime of the real-time benchmark in milliseconds.
  - **`tracing_run_ms`**: Total runtime of the tracing run in milliseconds.
  - **`trace_directory`**: Directory where the trace files are located.
+ - **`dram_percentage`**: Percentage of total memory pages that are assumed to fit in DRAM in each interval.
 
 ## Example
 
