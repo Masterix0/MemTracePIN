@@ -27,6 +27,6 @@ include $(TOOLS_ROOT)/Config/makefile.default.rules
 
 all: output sorted obj-intel64 $(OBJDIR)MyPinTool.so
 
-clean: clean-output clean-obj clean-sorted
+clean: clean-output clean-obj clean-sorted clean-benchmark-time
 	-rm -f $(OBJDIR)MyPinTool.so
 	-rm -f $(OBJDIR)MyPinTool.o

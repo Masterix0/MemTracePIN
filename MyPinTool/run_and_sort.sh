@@ -1,6 +1,7 @@
 #!/bin/bash
 
-path=$(dirname $0)
+# Set the path to the directory containing the script
+path=$(dirname "$0")
 
 # Check if at least one argument is provided
 if [ "$#" -lt 1 ]; then
@@ -9,7 +10,7 @@ if [ "$#" -lt 1 ]; then
 fi
 
 # Get the executable path and shift the arguments
-executable_path=$1
+executable_path="$1"
 shift
 executable_args="$@"
 
@@ -20,27 +21,48 @@ sorted_dir="sorted"
 # Create sorted directory if it doesn't exist
 mkdir -p "$sorted_dir"
 
-# Run the tracer and measure the time it takes
-echo "Running tracer on $executable_path $executable_args"
-time setarch x86_64 -R $PIN_ROOT/pin -ifeellucky -t $path/obj-intel64/MyPinTool.so -- "$executable_path" $executable_args
+# Define the benchmark output file
+benchmark_file="benchmark_time.txt"
 
-# Sort and delete files
-echo "Sorting and deleting files in the output directory"
+# Function to run the tracer and measure time
+run_tracer() {
+    echo "Running tracer on $executable_path $executable_args"
 
-for file in "$input_dir"/*; do
-    # Get the base name of the file
-    base_name=$(basename "$file")
-    
-    # Define the sorted file path
-    sorted_file="$sorted_dir/$base_name"
-    
-    # Sort the file and output to the sorted directory
-    sort "$file" -o "$sorted_file"
-    
-    # Delete the original file
-    rm "$file"
-    
-    echo "Sorted $file -> $sorted_file"
-done
+    # Use the 'time' command with format specifiers
+    # %e: Real elapsed time (in seconds)
+    # %U: User CPU time used (in seconds)
+    # %S: System CPU time used (in seconds)
+    # Redirect the time output to both terminal and benchmark_file
 
-echo "All files sorted and originals deleted."
+    { time setarch x86_64 -R "$PIN_ROOT/pin" -ifeellucky -t "$path/obj-intel64/MyPinTool.so" -- "$executable_path" $executable_args; } 2> >(tee -a "$benchmark_file")
+}
+
+# Function to sort and delete files
+sort_and_cleanup() {
+    echo "Sorting and deleting files in the output directory"
+
+    for file in "$input_dir"/*; do
+        # Ensure that we are processing files only
+        if [ -f "$file" ]; then
+            # Get the base name of the file
+            base_name=$(basename "$file")
+
+            # Define the sorted file path
+            sorted_file="$sorted_dir/$base_name"
+
+            # Sort the file and output to the sorted directory
+            sort "$file" -o "$sorted_file"
+
+            # Delete the original file
+            rm "$file"
+
+            echo "Sorted $file -> $sorted_file"
+        fi
+    done
+
+    echo "All files sorted and originals deleted."
+}
+
+# Main execution
+run_tracer
+sort_and_cleanup

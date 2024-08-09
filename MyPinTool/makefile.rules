@@ -94,6 +94,9 @@ clean-output:
 clean-sorted:
 	rm -rf sorted
 
+clean-benchmark-time:
+	rm -rf benchmark_time.txt
+
 obj-intel64:
 	mkdir -p obj-intel64
 

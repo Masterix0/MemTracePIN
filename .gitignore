@@ -40,3 +40,4 @@ MyPinTool/pin.log
 # Trace Analysis Tool binaries and output
 TraceAnalyzer/bin/*.class
 TraceAnalyzer/output
+MyPinTool/benchmark_time.txt
