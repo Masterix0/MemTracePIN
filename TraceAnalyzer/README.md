@@ -29,11 +29,12 @@ make
 To run the trace analysis tool, use the following command:
 
 ```sh
-java -cp bin TraceAnalyzer <real_time_interval_ms> <real_time_run_ms> <tracing_run_ms> <trace_directory> <dram_percentage> <sub_interval_duration_ms>
+java -cp bin TraceAnalyzer <workload_name> <real_time_interval_ms> <real_time_run_ms> <tracing_run_ms> <trace_directory> <dram_percentage> <sub_interval_duration_ms>
 ```
 
 ## Arguments
 
+- **`workload_name`**: Name of the workload being analyzed. This will be used to name the output CSV file.
 - **`real_time_interval_ms`**: Size of the real-time interval window in milliseconds.
 - **`real_time_run_ms`**: Total runtime of the real-time benchmark in milliseconds.
 - **`tracing_run_ms`**: Total runtime of the tracing run in milliseconds.
@@ -44,16 +45,19 @@ java -cp bin TraceAnalyzer <real_time_interval_ms> <real_time_run_ms> <tracing_r
 ## Example
 
 ```sh
-java -cp bin TraceAnalyzer 3 12 25000 /path/to/trace/files 0.3 1
+java -cp bin TraceAnalyzer my_workload 3 12 25000 ../MyPinTool/sorted/ 0.3 1
 ```
 
 This command analyzes the trace with:
+- Workload name: `my_workload`
 - An interval window of 3 milliseconds
 - Real runtime of 12 milliseconds
 - Trace runtime of 25000 milliseconds
 - Trace files located in `../MyPinTool/sorted/`
 - DRAM percentage of 30%
-- Sub-interval duration of 10 milliseconds
+- Sub-interval duration of 1 millisecond
+
+The output CSV file will be named based on the workload name and parameters, following the format: `my_workload-3-1.00-0.30.csv`.
 
 ## Cleaning Up
 

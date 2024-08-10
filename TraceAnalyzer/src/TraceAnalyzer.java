@@ -6,18 +6,19 @@ import java.util.*;
 public class TraceAnalyzer {
 
     public static void main(String[] args) {
-        if (args.length != 6) {
+        if (args.length != 7) { // Updated to 7 to account for the workload name
             System.out.println(
-                    "Usage: java TraceAnalyzer <interval_window_ms> <real_runtime_ms> <trace_runtime_ms> <trace_dir> <dram_percentage> <sub_interval_duration_ms>");
+                    "Usage: java TraceAnalyzer <workload_name> <interval_window_ms> <real_runtime_ms> <trace_runtime_ms> <trace_dir> <dram_percentage> <sub_interval_duration_ms>");
             return;
         }
 
-        long intervalWindowMs = Long.parseLong(args[0]);
-        long realRuntime = Long.parseLong(args[1]);
-        long traceRuntime = Long.parseLong(args[2]);
-        String traceDir = args[3];
-        double dramPercentage = Double.parseDouble(args[4]);
-        float ptsIntervalDurationMs = Float.parseFloat(args[5]);
+        String workloadName = args[0]; // Get the workload name
+        long intervalWindowMs = Long.parseLong(args[1]);
+        long realRuntime = Long.parseLong(args[2]);
+        long traceRuntime = Long.parseLong(args[3]);
+        String traceDir = args[4];
+        double dramPercentage = Double.parseDouble(args[5]);
+        float ptsIntervalDurationMs = Float.parseFloat(args[6]);
 
         if (dramPercentage <= 0 || dramPercentage > 1) {
             System.out.println("DRAM percentage must be between 0 and 1 (exclusive)");
@@ -58,8 +59,12 @@ public class TraceAnalyzer {
                 outputDir.mkdir();
             }
 
+            // Create the output filename using the workload name and other parameters
+            String outputFilename = String.format("output/%s-%d-%.2f-%.2f.csv",
+                    workloadName, intervalWindowMs, ptsIntervalDurationMs, dramPercentage);
+
             // Initialize CSV writer
-            BufferedWriter csvWriter = new BufferedWriter(new FileWriter("output/trace_analysis_results.csv"));
+            BufferedWriter csvWriter = new BufferedWriter(new FileWriter(outputFilename));
             csvWriter.write(
                     "interval_start_timestamp,interval_end_timestamp,number_of_pages_accessed,total_access_count,actual_accesses_dram_hit_ratio,estimated_dram_hit_ratio,pts_dram_hit_ratio\n");
 
@@ -121,7 +126,7 @@ public class TraceAnalyzer {
             csvWriter.close();
 
             // Calculate overall DRAM hit ratios
-            calculateOverallDRAMHitRatios("output/trace_analysis_results.csv");
+            calculateOverallDRAMHitRatios(outputFilename); // Updated to use the generated filename
         } catch (IOException e) {
             e.printStackTrace();
         }
