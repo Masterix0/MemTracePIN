@@ -125,8 +125,8 @@ public class TraceAnalyzer {
 
             csvWriter.close();
 
-            // Calculate overall DRAM hit ratios
-            calculateOverallDRAMHitRatios(outputFilename); // Updated to use the generated filename
+            // Calculate overall DRAM hit ratios and variance
+            calculateOverallDRAMHitRatiosAndVariance(outputFilename); // Updated to use the generated filename
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -211,11 +211,15 @@ public class TraceAnalyzer {
         return new HitRatioStats(hitRatioActual, hitRatioEstimated, hitRatioPTS, actual.size(), totalAccesses);
     }
 
-    private static void calculateOverallDRAMHitRatios(String csvFilePath) {
+    private static void calculateOverallDRAMHitRatiosAndVariance(String csvFilePath) {
         long totalAccessCount = 0;
         double totalActualHits = 0;
         double totalEstimatedHits = 0;
         double totalPTSHits = 0;
+
+        List<Double> actualHitRatios = new ArrayList<>();
+        List<Double> estimatedHitRatios = new ArrayList<>();
+        List<Double> ptsHitRatios = new ArrayList<>();
 
         try (BufferedReader reader = new BufferedReader(new FileReader(csvFilePath))) {
             String line;
@@ -232,6 +236,10 @@ public class TraceAnalyzer {
                 totalActualHits += intervalAccessCount * actualHitRatio;
                 totalEstimatedHits += intervalAccessCount * estimatedHitRatio;
                 totalPTSHits += intervalAccessCount * ptsHitRatio;
+
+                actualHitRatios.add(actualHitRatio);
+                estimatedHitRatios.add(estimatedHitRatio);
+                ptsHitRatios.add(ptsHitRatio);
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -251,10 +259,25 @@ public class TraceAnalyzer {
                 .setScale(3, RoundingMode.HALF_UP)
                 .doubleValue();
 
+        double varianceActual = calculateVariance(actualHitRatios, overallActualHitRatio);
+        double varianceEstimated = calculateVariance(estimatedHitRatios, overallEstimatedHitRatio);
+        double variancePTS = calculateVariance(ptsHitRatios, overallPTSHitRatio);
+
         System.out.println("\n---------------------------------------------\n");
         System.out.println("Overall DRAM Hit Ratios:");
-        System.out.println("Actual: " + overallActualHitRatioRounded);
-        System.out.println("Estimated: " + overallEstimatedHitRatioRounded);
-        System.out.println("PTS: " + overallPTSHitRatioRounded);
+        System.out.println("Actual: " + overallActualHitRatioRounded + " (Variance: " + varianceActual + ")");
+        System.out.println("Estimated: " + overallEstimatedHitRatioRounded + " (Variance: " + varianceEstimated + ")");
+        System.out.println("PTS: " + overallPTSHitRatioRounded + " (Variance: " + variancePTS + ")");
+    }
+
+    private static double calculateVariance(List<Double> hitRatios, double mean) {
+        double variance = 0;
+        for (double hitRatio : hitRatios) {
+            variance += Math.pow(hitRatio - mean, 2);
+        }
+        variance /= hitRatios.size();
+        return BigDecimal.valueOf(variance)
+                .setScale(6, RoundingMode.HALF_UP)
+                .doubleValue();
     }
 }
