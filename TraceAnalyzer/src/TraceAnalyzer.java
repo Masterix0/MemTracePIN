@@ -6,13 +6,13 @@ import java.util.*;
 public class TraceAnalyzer {
 
     public static void main(String[] args) {
-        if (args.length != 7) { // Updated to 7 to account for the workload name
+        if (args.length != 7) {
             System.out.println(
                     "Usage: java TraceAnalyzer <workload_name> <interval_window_ms> <real_runtime_ms> <trace_runtime_ms> <trace_dir> <dram_percentage> <sub_interval_duration_ms>");
             return;
         }
 
-        String workloadName = args[0]; // Get the workload name
+        String workloadName = args[0];
         long intervalWindowMs = Long.parseLong(args[1]);
         long realRuntime = Long.parseLong(args[2]);
         long traceRuntime = Long.parseLong(args[3]);
@@ -74,14 +74,8 @@ public class TraceAnalyzer {
             while (currentIntervalEnd <= globalEndTimestamp) {
                 intervalAnalyzer.analyzeInterval(currentIntervalStart, currentIntervalEnd);
 
-                // Collect and compare hot pages
-                List<PageStats> estimatedHotPages = intervalAnalyzer.getHotPagesByFirstAccess();
-                List<PageStats> actualHotPages = intervalAnalyzer.getHotPagesByTotalAccess();
-                List<PageStats> ptsHotPages = intervalAnalyzer.getHotPagesByPTSScore();
-
                 // Compare rankings and calculate accuracy
-                HitRatioStats hitRatios = calculateAccuracy(actualHotPages, estimatedHotPages, ptsHotPages,
-                        dramPercentage);
+                HitRatioStats hitRatios = calculateAccuracy(intervalAnalyzer, dramPercentage);
                 System.out.println(
                         "<Interval " + currentIntervalStart + " - " + currentIntervalEnd + ">");
 
@@ -125,8 +119,7 @@ public class TraceAnalyzer {
 
             csvWriter.close();
 
-            // Calculate overall DRAM hit ratios and variance
-            calculateOverallDRAMHitRatiosAndVariance(outputFilename); // Updated to use the generated filename
+            calculateOverallDRAMHitRatiosAndVariance(outputFilename);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -184,23 +177,22 @@ public class TraceAnalyzer {
         return new long[] { globalStartTimestamp, globalEndTimestamp };
     }
 
-    private static HitRatioStats calculateAccuracy(List<PageStats> actual, List<PageStats> estimated,
-            List<PageStats> pts,
-            double dramPercentage) {
+    private static HitRatioStats calculateAccuracy(IntervalAnalyzer intervalAnalyzer, double dramPercentage) {
 
         // We look at the top DRAM percentage of pages
-        int topN = (int) Math.ceil(Math.min(estimated.size(), actual.size()) * dramPercentage);
-
-        List<PageStats> topEstimated = estimated.subList(0, topN);
-        List<PageStats> topActual = actual.subList(0, topN);
-        List<PageStats> topPTS = pts.subList(0, topN);
+        int topN = (int) Math.ceil(intervalAnalyzer.getTotalPageCount() * dramPercentage);
 
         // Calculate total accesses of all pages
-        long totalAccesses = actual.stream().mapToLong(PageStats::getAccessCount).sum();
+        long totalAccesses = intervalAnalyzer.getTotalAccessCount();
 
-        // Calculate total accesses of top N pages
+        // Collect and compare hot pages, then calculate total accesses of top N pages
+        List<PageStats> topActual = intervalAnalyzer.getHotPagesByTotalAccess().subList(0, topN);
         long topActualAccesses = topActual.stream().mapToLong(PageStats::getAccessCount).sum();
+
+        List<PageStats> topEstimated = intervalAnalyzer.getHotPagesByFirstAccess().subList(0, topN);
         long topEstimatedAccesses = topEstimated.stream().mapToLong(PageStats::getAccessCount).sum();
+
+        List<PageStats> topPTS = intervalAnalyzer.getHotPagesByPTSScore().subList(0, topN);
         long topPTSAccesses = topPTS.stream().mapToLong(PageStats::getAccessCount).sum();
 
         // Calculate DRAM hit ratio of top N pages
@@ -208,7 +200,8 @@ public class TraceAnalyzer {
         double hitRatioEstimated = (double) topEstimatedAccesses / totalAccesses;
         double hitRatioPTS = (double) topPTSAccesses / totalAccesses;
 
-        return new HitRatioStats(hitRatioActual, hitRatioEstimated, hitRatioPTS, actual.size(), totalAccesses);
+        return new HitRatioStats(hitRatioActual, hitRatioEstimated, hitRatioPTS, intervalAnalyzer.getTotalPageCount(),
+                totalAccesses);
     }
 
     private static void calculateOverallDRAMHitRatiosAndVariance(String csvFilePath) {

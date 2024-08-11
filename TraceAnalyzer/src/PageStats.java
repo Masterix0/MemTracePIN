@@ -3,7 +3,7 @@ import java.util.Set;
 
 public class PageStats {
 
-    private String pageId;
+    private long pageId;
     private long accessCount;
     private long firstAccessTime;
     private long PTSScore;
@@ -11,7 +11,7 @@ public class PageStats {
     // Set that contains indexes of subintervals in which the page was accessed
     private Set<Integer> subintervalIndexes;
 
-    public PageStats(String pageId) {
+    public PageStats(long pageId) {
         this.pageId = pageId;
         this.accessCount = 0;
         this.firstAccessTime = Long.MAX_VALUE;
@@ -19,7 +19,7 @@ public class PageStats {
         this.subintervalIndexes = new HashSet<>();
     }
 
-    public String getPageId() {
+    public long getPageId() {
         return pageId;
     }
 

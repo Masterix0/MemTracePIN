@@ -7,7 +7,7 @@ public class IntervalAnalyzer {
     private List<File> traceFiles;
     private long intervalStart;
     private long intervalEnd;
-    private Map<String, PageStats> pageStatsMap;
+    private Map<Long, PageStats> pageStatsMap;
     private Map<File, Long> filePositions;
     private int lineLength = -1;
     private long subIntervalDuration; // Duration of each sub-interval for PTS scoring
@@ -76,7 +76,7 @@ public class IntervalAnalyzer {
                 }
 
                 if (timestamp >= intervalStart) {
-                    String pageId = parts[2];
+                    long pageId = Long.parseLong(parts[2], 16);
 
                     pageStatsMap.compute(pageId, (k, v) -> {
                         if (v == null) {
@@ -118,5 +118,15 @@ public class IntervalAnalyzer {
         List<PageStats> hotPages = new ArrayList<>(pageStatsMap.values());
         hotPages.sort(Comparator.comparingLong(PageStats::getPTSScore).reversed());
         return hotPages;
+    }
+
+    // Get total number of accesses in the interval
+    public long getTotalAccessCount() {
+        return pageStatsMap.values().stream().mapToLong(PageStats::getAccessCount).sum();
+    }
+
+    // Get total pages accessed in the interval
+    public long getTotalPageCount() {
+        return pageStatsMap.size();
     }
 }
