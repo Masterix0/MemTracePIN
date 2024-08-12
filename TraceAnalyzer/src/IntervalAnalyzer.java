@@ -76,7 +76,9 @@ public class IntervalAnalyzer {
                 }
 
                 if (timestamp >= intervalStart) {
-                    long pageId = Long.parseLong(parts[2], 16);
+                    long address = Long.parseLong(parts[2], 16);
+                    // We are considering 4KB pages, so we mask the lower 12 bits to get the page ID
+                    long pageId = address >>> 12;
 
                     pageStatsMap.compute(pageId, (k, v) -> {
                         if (v == null) {

@@ -83,6 +83,10 @@ public class TraceAnalyzer {
                 long numberOfPagesAccessed = hitRatios.getNumPagesAccessed();
                 System.out.println("Number of pages accessed: " + numberOfPagesAccessed);
 
+                // Print total number of accesses in interval
+                long totalAccessCount = hitRatios.getNumAccesses();
+                System.out.println("Total access count: " + totalAccessCount);
+
                 // If number of pages accessed is bigger than 0, print hit ratios rounded to 3
                 // decimal places
                 if (numberOfPagesAccessed > 0) {
@@ -103,7 +107,6 @@ public class TraceAnalyzer {
                     System.out.println("PTS hit ratio: " + ptsHitRatioRounded);
 
                     // Write to CSV
-                    long totalAccessCount = hitRatios.getNumAccesses();
                     csvWriter.write(currentIntervalStart + "," + currentIntervalEnd + "," + numberOfPagesAccessed + ","
                             + totalAccessCount + "," + hitRatios.getActualHitRatio() + ","
                             + hitRatios.getEstimatedHitRatio() + ","
