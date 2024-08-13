@@ -64,11 +64,21 @@ public class IntervalAnalyzer {
         try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
             // Skip lines until reaching the last position
             long bytesToSkip = filePosition * lineLength;
+
+            // To avoid bad math or lines with different lengths, we skip a bit less than
+            // the calculated bytes
+            // This is a trade-off between performance and accuracy
+            bytesToSkip -= (bytesToSkip / 100);
+
             reader.skip(bytesToSkip);
+
+            // Skip to the next line
+            reader.readLine();
 
             String line;
             while ((line = reader.readLine()) != null) {
                 String[] parts = line.split(",");
+
                 long timestamp = Long.parseLong(parts[0], 16);
 
                 if (timestamp > intervalEnd) {
