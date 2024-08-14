@@ -16,7 +16,7 @@ public class IntervalAnalyzer {
         this.traceFiles = traceFiles;
         this.subIntervalDuration = subIntervalDuration;
         this.pageStatsMap = new ConcurrentHashMap<>();
-        this.filePositions = new HashMap<>();
+        this.filePositions = new ConcurrentHashMap<>();
 
         // Initialize file positions to the start of each file
         for (File file : traceFiles) {
@@ -79,6 +79,11 @@ public class IntervalAnalyzer {
             while ((line = reader.readLine()) != null) {
                 String[] parts = line.split(",");
 
+                // Check if line is empty or has the wrong number of parts
+                if (parts.length != 3) {
+                    continue;
+                }
+
                 long timestamp = Long.parseLong(parts[0], 16);
 
                 if (timestamp > intervalEnd) {
@@ -105,9 +110,9 @@ public class IntervalAnalyzer {
 
                         return v;
                     });
-                }
 
-                filePosition++;
+                    filePosition++;
+                }
             }
 
             filePositions.put(file, filePosition);
