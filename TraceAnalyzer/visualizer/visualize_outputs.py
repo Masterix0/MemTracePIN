@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import os
 import glob
 import math
+import re
 
 # Get the directory where the script is located
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -23,79 +24,110 @@ if not csv_files:
     print(f"No CSV files found in {output_dir}.")
     exit(1)
 
-# Initialize a dictionary to hold data from each file
+# Initialize dictionaries to hold data and workload info
 dataframes = {}
+workload_info = {}
+
 for csv_file in csv_files:
+    # Extract information from the filename
+    filename = os.path.basename(csv_file)
+    workload_name = os.path.splitext(filename)[0]
+
+    # Use regex to parse the filename
+    # Example filename: '603_bwaves_s-100-20.00-0.10.csv'
+    pattern = r'^(.+?)-(\d+)-([\d\.]+)-([\d\.]+)$'
+    match = re.match(pattern, workload_name)
+
+    if match:
+        workload_base_name = match.group(1)
+        scan_interval_duration_ms = float(match.group(2))
+        sub_interval_duration_ms = float(match.group(3))
+        simulated_dram_capacity_percent = float(match.group(4)) * 100  # Convert to percentage
+    else:
+        # If the filename doesn't match the pattern, use default values
+        workload_base_name = workload_name
+        scan_interval_duration_ms = None
+        sub_interval_duration_ms = None
+        simulated_dram_capacity_percent = None
+
     # Read the CSV file
     df = pd.read_csv(csv_file)
-    # Extract the workload name or identifier from the filename for labeling
-    workload_name = os.path.splitext(os.path.basename(csv_file))[0]
-    
+
     # Convert timestamps from strings to numeric values
     df['interval_start_timestamp'] = pd.to_numeric(df['interval_start_timestamp'])
     df['interval_end_timestamp'] = pd.to_numeric(df['interval_end_timestamp'])
-    
-    # Calculate the average timestamp for each interval
-    df['timestamp'] = (df['interval_start_timestamp'] + df['interval_end_timestamp']) / 2
-    
-    # Convert timestamps to seconds (assuming they are in nanoseconds)
-    df['timestamp'] = df['timestamp'] / 1e9  # Adjust the unit according to your data's units
-    
+
+    # Compute elapsed jiffies relative to the first timestamp
+    df['elapsed_jiffies'] = df['interval_start_timestamp'] - df['interval_start_timestamp'].iloc[0]
+
     # Calculate hits for each method
     df['actual_hits'] = df['total_access_count'] * df['actual_accesses_dram_hit_ratio']
     df['estimated_hits'] = df['total_access_count'] * df['estimated_dram_hit_ratio']
     df['pts_hits'] = df['total_access_count'] * df['pts_dram_hit_ratio']
-    
-    # Store the dataframe
+
+    # Store the dataframe and workload info
     dataframes[workload_name] = df
-
-# Find the earliest timestamp among all datasets to align timelines
-min_timestamp = min(df['timestamp'].iloc[0] for df in dataframes.values())
-
-# Adjust all timestamps to start from zero
-for df in dataframes.values():
-    df['timestamp'] -= min_timestamp
+    workload_info[workload_name] = {
+        'workload_base_name': workload_base_name,
+        'scan_interval_duration_ms': scan_interval_duration_ms,
+        'sub_interval_duration_ms': sub_interval_duration_ms,
+        'simulated_dram_capacity_percent': simulated_dram_capacity_percent
+    }
 
 # Determine grid size for subplots based on the number of CSV files
 num_files = len(dataframes)
 cols = 3  # Set the number of columns to 3 as per your request
 rows = math.ceil(num_files / cols)
 
+# Update legends
+metrics = [
+    ('actual_accesses_dram_hit_ratio', 'Total Number Of Accesses Ranking', {'marker': 'o', 'linestyle': '-'}),
+    ('estimated_dram_hit_ratio', 'First Access Time Ranking', {'marker': 'x', 'linestyle': '--'}),
+    ('pts_dram_hit_ratio', 'Simulated PTS Scoring Ranking', {'marker': 's', 'linestyle': ':'})
+]
+
+# Function to generate subplot titles from workload info
+def generate_subplot_title(workload_name):
+    info = workload_info[workload_name]
+    title_parts = [info['workload_base_name']]
+    if info['scan_interval_duration_ms'] is not None:
+        title_parts.append(f"Interval={info['scan_interval_duration_ms']}ms")
+    if info['sub_interval_duration_ms'] is not None:
+        title_parts.append(f"Sub-interval={info['sub_interval_duration_ms']}ms")
+    if info['simulated_dram_capacity_percent'] is not None:
+        title_parts.append(f"Simulated DRAM={info['simulated_dram_capacity_percent']:.0f}%")
+    return ', '.join(title_parts)
+
 # Function to create subplots with multiple metrics in each subplot
 def create_subplots_multiple_metrics(metrics, ylabel, title, filename):
     fig, axes = plt.subplots(rows, cols, figsize=(18, rows * 4), sharex=True, sharey=True)
     axes = axes.flatten()
-    for i, (workload_name, df) in enumerate(dataframes.items()):
+    for i, workload_name in enumerate(dataframes.keys()):
+        df = dataframes[workload_name]
         ax = axes[i]
         for metric, label, style in metrics:
-            ax.plot(df['timestamp'], df[metric], marker=style['marker'], linestyle=style['linestyle'], label=label)
-        ax.set_title(workload_name, fontsize=10)
+            ax.plot(df['elapsed_jiffies'], df[metric], marker=style['marker'], linestyle=style['linestyle'], label=label)
+        subplot_title = generate_subplot_title(workload_name)
+        ax.set_title(subplot_title, fontsize=10)
         ax.grid(True)
         if i % cols == 0:
             ax.set_ylabel(ylabel)
         if i >= num_files - cols:
-            ax.set_xlabel('Time (s)')  # Indicate that the x-axis is time in seconds
+            ax.set_xlabel('Time (in jiffies relative to first timestamp)')
         ax.legend(fontsize='small')
     # Hide any unused subplots
     for j in range(i + 1, len(axes)):
         fig.delaxes(axes[j])
     fig.suptitle(title, fontsize=16)
-    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+    plt.tight_layout(rect=[0, 0.05, 1, 0.95])
     plt.savefig(os.path.join(plots_dir, filename))
     plt.close()
-
-# Define the metrics to plot together
-metrics = [
-    ('actual_accesses_dram_hit_ratio', 'Actual', {'marker': 'o', 'linestyle': '-'}),
-    ('estimated_dram_hit_ratio', 'Estimated', {'marker': 'x', 'linestyle': '--'}),
-    ('pts_dram_hit_ratio', 'PTS', {'marker': 's', 'linestyle': ':'})
-]
 
 # Create subplots for DRAM Hit Ratios with all metrics in the same plot
 create_subplots_multiple_metrics(
     metrics=metrics,
     ylabel='DRAM Hit Ratio',
-    title='DRAM Hit Ratios Over Time',
+    title='DRAM Hit Ratios Over Time Per Page-Ranking Mechanism',
     filename='dram_hit_ratios_collage.png'
 )
 
@@ -103,20 +135,22 @@ create_subplots_multiple_metrics(
 def create_subplots_single_metric(metric, ylabel, title, filename):
     fig, axes = plt.subplots(rows, cols, figsize=(18, rows * 4), sharex=True)
     axes = axes.flatten()
-    for i, (workload_name, df) in enumerate(dataframes.items()):
+    for i, workload_name in enumerate(dataframes.keys()):
+        df = dataframes[workload_name]
         ax = axes[i]
-        ax.plot(df['timestamp'], df[metric], marker='o', linestyle='-')
-        ax.set_title(workload_name, fontsize=10)
+        ax.plot(df['elapsed_jiffies'], df[metric], marker='o', linestyle='-')
+        subplot_title = generate_subplot_title(workload_name)
+        ax.set_title(subplot_title, fontsize=10)
         ax.grid(True)
         if i % cols == 0:
             ax.set_ylabel(ylabel)
         if i >= num_files - cols:
-            ax.set_xlabel('Time (s)')
+            ax.set_xlabel('Time (in jiffies relative to first timestamp)')
     # Hide any unused subplots
     for j in range(i + 1, len(axes)):
         fig.delaxes(axes[j])
     fig.suptitle(title, fontsize=16)
-    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+    plt.tight_layout(rect=[0, 0.05, 1, 0.95])
     plt.savefig(os.path.join(plots_dir, filename))
     plt.close()
 
@@ -140,27 +174,31 @@ create_subplots_single_metric(
 def create_subplots_hit_ratio_difference(ylabel, title, filename):
     fig, axes = plt.subplots(rows, cols, figsize=(18, rows * 4), sharex=True, sharey=True)
     axes = axes.flatten()
-    for i, (workload_name, df) in enumerate(dataframes.items()):
+    for i, workload_name in enumerate(dataframes.keys()):
+        df = dataframes[workload_name]
         ax = axes[i]
         df['Hit Ratio Difference'] = df['actual_accesses_dram_hit_ratio'] - df['estimated_dram_hit_ratio']
-        ax.plot(df['timestamp'], df['Hit Ratio Difference'], marker='o', linestyle='-')
-        ax.set_title(workload_name, fontsize=10)
+        ax.plot(df['elapsed_jiffies'], df['Hit Ratio Difference'], marker='o', linestyle='-')
+        # Indicate negative differences
+        ax.fill_between(df['elapsed_jiffies'], df['Hit Ratio Difference'], where=(df['Hit Ratio Difference'] < 0), color='red', alpha=0.3)
+        subplot_title = generate_subplot_title(workload_name)
+        ax.set_title(subplot_title, fontsize=10)
         ax.grid(True)
         if i % cols == 0:
             ax.set_ylabel(ylabel)
         if i >= num_files - cols:
-            ax.set_xlabel('Time (s)')
+            ax.set_xlabel('Time (in jiffies relative to first timestamp)')
     # Hide any unused subplots
     for j in range(i + 1, len(axes)):
         fig.delaxes(axes[j])
-    fig.suptitle(title, fontsize=16)
-    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+    fig.suptitle(title, fontsize=14)
+    plt.tight_layout(rect=[0, 0.05, 1, 0.93])
     plt.savefig(os.path.join(plots_dir, filename))
     plt.close()
 
 create_subplots_hit_ratio_difference(
     ylabel='Difference in DRAM Hit Ratio',
-    title='Difference Between Actual and Estimated DRAM Hit Ratios Over Time',
+    title='Difference Between Total Number Of Accesses Ranking and First Access Time Ranking Over Time',
     filename='hit_ratio_difference_collage.png'
 )
 
@@ -168,46 +206,55 @@ create_subplots_hit_ratio_difference(
 def create_bar_charts_collage(filename):
     fig, axes = plt.subplots(rows, cols, figsize=(18, rows * 4))
     axes = axes.flatten()
-    for i, (workload_name, df) in enumerate(dataframes.items()):
+    for i, workload_name in enumerate(dataframes.keys()):
+        df = dataframes[workload_name]
         ax = axes[i]
-        
+
+        # Ensure 'actual_hits' and other hit columns exist
+        if 'actual_hits' not in df.columns:
+            # Calculate hits for each method
+            df['actual_hits'] = df['total_access_count'] * df['actual_accesses_dram_hit_ratio']
+            df['estimated_hits'] = df['total_access_count'] * df['estimated_dram_hit_ratio']
+            df['pts_hits'] = df['total_access_count'] * df['pts_dram_hit_ratio']
+
         # Calculate totals for this workload
         total_accesses = df['total_access_count'].sum()
         total_actual_hits = df['actual_hits'].sum()
         total_estimated_hits = df['estimated_hits'].sum()
         total_pts_hits = df['pts_hits'].sum()
-        
+
         # Calculate hit ratios
         actual_ratio = total_actual_hits / total_accesses
         estimated_ratio = total_estimated_hits / total_accesses
         pts_ratio = total_pts_hits / total_accesses
-        
+
         # Prepare data for the bar chart
-        methods = ['Actual', 'Estimated', 'PTS']
+        methods = ['Total Number\nOf Accesses', 'First Access\nTime', 'Simulated PTS\nScoring']
         hit_ratios = [actual_ratio, estimated_ratio, pts_ratio]
         colors = ['blue', 'orange', 'green']
-        
+
         # Create the bar chart
         bars = ax.bar(methods, hit_ratios, color=colors)
         ax.set_ylim(0, 1)
-        ax.set_title(workload_name, fontsize=10)
+        subplot_title = generate_subplot_title(workload_name)
+        ax.set_title(subplot_title, fontsize=10)
         ax.set_ylabel('DRAM Hit Ratio')
         ax.grid(axis='y')
-        
+
         # Annotate bars with values
         for bar, ratio in zip(bars, hit_ratios):
             yval = bar.get_height()
             ax.text(bar.get_x() + bar.get_width()/2.0, yval + 0.02, f'{ratio:.3f}', ha='center', va='bottom', fontsize=8)
-        
-        # Remove x-axis labels to reduce clutter
+
+        # Adjust x-axis labels
         ax.set_xticklabels(methods, rotation=0, fontsize=8)
     
     # Hide any unused subplots
     for j in range(i + 1, len(axes)):
         fig.delaxes(axes[j])
-    
+
     fig.suptitle('Overall DRAM Hit Ratios Per Workload', fontsize=16)
-    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
+    plt.tight_layout(rect=[0, 0.05, 1, 0.93])
     plt.savefig(os.path.join(plots_dir, filename))
     plt.close()
 

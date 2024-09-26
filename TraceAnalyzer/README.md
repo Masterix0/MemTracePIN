@@ -41,7 +41,7 @@ java -cp bin TraceAnalyzer <workload_name> <real_time_interval_ms> <real_time_ru
 
 ## Arguments
 
-- **`workload_name`**: Name of the workload being analyzed. This will be used to name the output CSV file.
+- **`workload_name`**: Name of the workload being analyzed. This will be used to name the output CSV file. IMPORTANT: Do not include spaces or hyphens in the name. (e.g., `this-name-will-break-the-tool`, `this name will also break it` and `this_name_is_fine`).
 - **`real_time_interval_ms`**: Size of the real-time interval window in milliseconds.
 - **`real_time_run_ms`**: Total runtime of the real-time benchmark in milliseconds.
 - **`tracing_run_ms`**: Total runtime of the tracing run in milliseconds.
