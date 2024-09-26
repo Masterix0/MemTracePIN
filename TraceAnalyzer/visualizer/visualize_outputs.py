@@ -57,8 +57,18 @@ for csv_file in csv_files:
     df['interval_start_timestamp'] = pd.to_numeric(df['interval_start_timestamp'])
     df['interval_end_timestamp'] = pd.to_numeric(df['interval_end_timestamp'])
 
-    # Compute elapsed jiffies relative to the first timestamp
-    df['elapsed_jiffies'] = df['interval_start_timestamp'] - df['interval_start_timestamp'].iloc[0]
+    # Compute duration per unit (jiffy) using the first interval
+    first_interval_duration_units = df['interval_end_timestamp'].iloc[0] - df['interval_start_timestamp'].iloc[0]
+
+    if scan_interval_duration_ms is not None and first_interval_duration_units != 0:
+        # Calculate duration per unit in seconds
+        duration_per_unit_s = (scan_interval_duration_ms / 1000.0) / first_interval_duration_units
+
+        # Compute timestamps in seconds relative to the first timestamp
+        df['timestamp'] = (df['interval_start_timestamp'] - df['interval_start_timestamp'].iloc[0]) * duration_per_unit_s
+    else:
+        # If scan_interval_duration_ms is not available or division by zero occurs
+        df['timestamp'] = df.index * (scan_interval_duration_ms / 1000.0 if scan_interval_duration_ms else 1.0)
 
     # Calculate hits for each method
     df['actual_hits'] = df['total_access_count'] * df['actual_accesses_dram_hit_ratio']
@@ -100,20 +110,20 @@ def generate_subplot_title(workload_name):
 
 # Function to create subplots with multiple metrics in each subplot
 def create_subplots_multiple_metrics(metrics, ylabel, title, filename):
-    fig, axes = plt.subplots(rows, cols, figsize=(18, rows * 4), sharex=True, sharey=True)
+    fig, axes = plt.subplots(rows, cols, figsize=(18, rows * 4), sharex=False, sharey=True)
     axes = axes.flatten()
     for i, workload_name in enumerate(dataframes.keys()):
         df = dataframes[workload_name]
         ax = axes[i]
         for metric, label, style in metrics:
-            ax.plot(df['elapsed_jiffies'], df[metric], marker=style['marker'], linestyle=style['linestyle'], label=label)
+            ax.plot(df['timestamp'], df[metric], marker=style['marker'], linestyle=style['linestyle'], label=label)
         subplot_title = generate_subplot_title(workload_name)
         ax.set_title(subplot_title, fontsize=10)
         ax.grid(True)
         if i % cols == 0:
             ax.set_ylabel(ylabel)
         if i >= num_files - cols:
-            ax.set_xlabel('Time (in jiffies relative to first timestamp)')
+            ax.set_xlabel('Time (s)')
         ax.legend(fontsize='small')
     # Hide any unused subplots
     for j in range(i + 1, len(axes)):
@@ -133,19 +143,19 @@ create_subplots_multiple_metrics(
 
 # Create subplots for Number of Pages Accessed
 def create_subplots_single_metric(metric, ylabel, title, filename):
-    fig, axes = plt.subplots(rows, cols, figsize=(18, rows * 4), sharex=True)
+    fig, axes = plt.subplots(rows, cols, figsize=(18, rows * 4), sharex=False)
     axes = axes.flatten()
     for i, workload_name in enumerate(dataframes.keys()):
         df = dataframes[workload_name]
         ax = axes[i]
-        ax.plot(df['elapsed_jiffies'], df[metric], marker='o', linestyle='-')
+        ax.plot(df['timestamp'], df[metric], marker='o', linestyle='-')
         subplot_title = generate_subplot_title(workload_name)
         ax.set_title(subplot_title, fontsize=10)
         ax.grid(True)
         if i % cols == 0:
             ax.set_ylabel(ylabel)
         if i >= num_files - cols:
-            ax.set_xlabel('Time (in jiffies relative to first timestamp)')
+            ax.set_xlabel('Time (s)')
     # Hide any unused subplots
     for j in range(i + 1, len(axes)):
         fig.delaxes(axes[j])
@@ -172,22 +182,22 @@ create_subplots_single_metric(
 
 # Plot Difference Between Actual and Estimated DRAM Hit Ratios
 def create_subplots_hit_ratio_difference(ylabel, title, filename):
-    fig, axes = plt.subplots(rows, cols, figsize=(18, rows * 4), sharex=True, sharey=True)
+    fig, axes = plt.subplots(rows, cols, figsize=(18, rows * 4), sharex=False, sharey=True)
     axes = axes.flatten()
     for i, workload_name in enumerate(dataframes.keys()):
         df = dataframes[workload_name]
         ax = axes[i]
         df['Hit Ratio Difference'] = df['actual_accesses_dram_hit_ratio'] - df['estimated_dram_hit_ratio']
-        ax.plot(df['elapsed_jiffies'], df['Hit Ratio Difference'], marker='o', linestyle='-')
+        ax.plot(df['timestamp'], df['Hit Ratio Difference'], marker='o', linestyle='-')
         # Indicate negative differences
-        ax.fill_between(df['elapsed_jiffies'], df['Hit Ratio Difference'], where=(df['Hit Ratio Difference'] < 0), color='red', alpha=0.3)
+        ax.fill_between(df['timestamp'], df['Hit Ratio Difference'], where=(df['Hit Ratio Difference'] < 0), color='red', alpha=0.3)
         subplot_title = generate_subplot_title(workload_name)
         ax.set_title(subplot_title, fontsize=10)
         ax.grid(True)
         if i % cols == 0:
             ax.set_ylabel(ylabel)
         if i >= num_files - cols:
-            ax.set_xlabel('Time (in jiffies relative to first timestamp)')
+            ax.set_xlabel('Time (s)')
     # Hide any unused subplots
     for j in range(i + 1, len(axes)):
         fig.delaxes(axes[j])
