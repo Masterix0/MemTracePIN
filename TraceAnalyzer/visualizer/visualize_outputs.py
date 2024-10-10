@@ -86,7 +86,7 @@ for csv_file in csv_files:
 
 # Determine grid size for subplots based on the number of CSV files
 num_files = len(dataframes)
-cols = 3  # Set the number of columns to 3 as per your request
+cols = 2  # Set the number of columns to 3 as per your request
 rows = math.ceil(num_files / cols)
 
 # Update legends
