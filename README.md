@@ -44,7 +44,9 @@ It calculates metrics such as DRAM hit ratios and provides detailed analysis to 
 - **Simulated Page-Ranking Mechanisms**:
   - **Total Number of Accesses**: Ranks pages based on how frequently they are accessed.
   - **First Access Time**: Ranks pages based on when they are first accessed.
-  - **Page Table Scan (PTS) Scoring**: Ranks pages using PTS scoring over sub-intervals.
+  - **Page Table Scan (PTS) Scoring**: Ranks pages using an approximation of PTS scoring over sub-intervals.
+  - **MicroChronos**: Approximates the ranking based on an approximation of the MicroChronos algorithm, which approximates first access time using variable sub-intervals.
+
 - **Output**:
   - Generates CSV files with metrics for each interval.
   - Provides overall DRAM hit ratios and variance calculations.

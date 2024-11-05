@@ -66,7 +66,8 @@ public class TraceAnalyzer {
             // Initialize CSV writer
             BufferedWriter csvWriter = new BufferedWriter(new FileWriter(outputFilename));
             csvWriter.write(
-                    "interval_start_timestamp,interval_end_timestamp,number_of_pages_accessed,total_access_count,actual_accesses_dram_hit_ratio,estimated_dram_hit_ratio,pts_dram_hit_ratio\n");
+                    "interval_start_timestamp,interval_end_timestamp,number_of_pages_accessed,total_access_count,"
+                            + "actual_accesses_dram_hit_ratio,estimated_dram_hit_ratio,pts_dram_hit_ratio,microchronos_dram_hit_ratio\n");
 
             // We only contemplate 'full' intervals, i.e., intervals that
             // start and end within the global trace timestamps
@@ -102,15 +103,21 @@ public class TraceAnalyzer {
                             .setScale(3, RoundingMode.HALF_UP)
                             .doubleValue();
 
+                    double microChronosHitRatioRounded = BigDecimal.valueOf(hitRatios.getMicroChronosHitRatio())
+                            .setScale(3, RoundingMode.HALF_UP)
+                            .doubleValue();
+
                     System.out.println("Actual hit ratio: " + actualHitRatioRounded);
                     System.out.println("Estimated hit ratio: " + estimatedHitRatioRounded);
                     System.out.println("PTS hit ratio: " + ptsHitRatioRounded);
+                    System.out.println("MicroChronos hit ratio: " + microChronosHitRatioRounded);
 
                     // Write to CSV
                     csvWriter.write(currentIntervalStart + "," + currentIntervalEnd + "," + numberOfPagesAccessed + ","
                             + totalAccessCount + "," + hitRatios.getActualHitRatio() + ","
                             + hitRatios.getEstimatedHitRatio() + ","
-                            + hitRatios.getPTSHitRatio() + "\n");
+                            + hitRatios.getPTSHitRatio() + ","
+                            + hitRatios.getMicroChronosHitRatio() + "\n");
                 } else {
                     // If no pages were accessed, don't print hit ratios and print a message
                     System.out.println("No pages accessed in this interval");
@@ -198,13 +205,17 @@ public class TraceAnalyzer {
         List<PageStats> topPTS = intervalAnalyzer.getHotPagesByPTSScore().subList(0, topN);
         long topPTSAccesses = topPTS.stream().mapToLong(PageStats::getAccessCount).sum();
 
+        List<PageStats> topMicroChronos = intervalAnalyzer.getHotPagesByMicroChronos().subList(0, topN);
+        long topMicroChronosAccesses = topMicroChronos.stream().mapToLong(PageStats::getAccessCount).sum();
+
         // Calculate DRAM hit ratio of top N pages
         double hitRatioActual = (double) topActualAccesses / totalAccesses;
         double hitRatioEstimated = (double) topEstimatedAccesses / totalAccesses;
         double hitRatioPTS = (double) topPTSAccesses / totalAccesses;
+        double hitRatioMicroChronos = (double) topMicroChronosAccesses / totalAccesses;
 
-        return new HitRatioStats(hitRatioActual, hitRatioEstimated, hitRatioPTS, intervalAnalyzer.getTotalPageCount(),
-                totalAccesses);
+        return new HitRatioStats(hitRatioActual, hitRatioEstimated, hitRatioPTS, hitRatioMicroChronos,
+                intervalAnalyzer.getTotalPageCount(), totalAccesses);
     }
 
     private static void calculateOverallDRAMHitRatiosAndVariance(String csvFilePath) {
@@ -212,10 +223,12 @@ public class TraceAnalyzer {
         double totalActualHits = 0;
         double totalEstimatedHits = 0;
         double totalPTSHits = 0;
+        double totalMicroChronosHits = 0;
 
         List<Double> actualHitRatios = new ArrayList<>();
         List<Double> estimatedHitRatios = new ArrayList<>();
         List<Double> ptsHitRatios = new ArrayList<>();
+        List<Double> microChronosHitRatios = new ArrayList<>();
 
         try (BufferedReader reader = new BufferedReader(new FileReader(csvFilePath))) {
             String line;
@@ -227,15 +240,18 @@ public class TraceAnalyzer {
                 double actualHitRatio = Double.parseDouble(parts[4]);
                 double estimatedHitRatio = Double.parseDouble(parts[5]);
                 double ptsHitRatio = Double.parseDouble(parts[6]);
+                double microChronosHitRatio = Double.parseDouble(parts[7]);
 
                 totalAccessCount += intervalAccessCount;
                 totalActualHits += intervalAccessCount * actualHitRatio;
                 totalEstimatedHits += intervalAccessCount * estimatedHitRatio;
                 totalPTSHits += intervalAccessCount * ptsHitRatio;
+                totalMicroChronosHits += intervalAccessCount * microChronosHitRatio;
 
                 actualHitRatios.add(actualHitRatio);
                 estimatedHitRatios.add(estimatedHitRatio);
                 ptsHitRatios.add(ptsHitRatio);
+                microChronosHitRatios.add(microChronosHitRatio);
             }
         } catch (IOException e) {
             e.printStackTrace();
@@ -244,6 +260,7 @@ public class TraceAnalyzer {
         double overallActualHitRatio = totalActualHits / totalAccessCount;
         double overallEstimatedHitRatio = totalEstimatedHits / totalAccessCount;
         double overallPTSHitRatio = totalPTSHits / totalAccessCount;
+        double overallMicroChronosHitRatio = totalMicroChronosHits / totalAccessCount;
 
         double overallActualHitRatioRounded = BigDecimal.valueOf(overallActualHitRatio)
                 .setScale(3, RoundingMode.HALF_UP)
@@ -254,16 +271,22 @@ public class TraceAnalyzer {
         double overallPTSHitRatioRounded = BigDecimal.valueOf(overallPTSHitRatio)
                 .setScale(3, RoundingMode.HALF_UP)
                 .doubleValue();
+        double overallMicroChronosHitRatioRounded = BigDecimal.valueOf(overallMicroChronosHitRatio)
+                .setScale(3, RoundingMode.HALF_UP)
+                .doubleValue();
 
         double varianceActual = calculateVariance(actualHitRatios, overallActualHitRatio);
         double varianceEstimated = calculateVariance(estimatedHitRatios, overallEstimatedHitRatio);
         double variancePTS = calculateVariance(ptsHitRatios, overallPTSHitRatio);
+        double varianceMicroChronos = calculateVariance(microChronosHitRatios, overallMicroChronosHitRatio);
 
         System.out.println("\n---------------------------------------------\n");
         System.out.println("Overall DRAM Hit Ratios:");
         System.out.println("Actual: " + overallActualHitRatioRounded + " (Variance: " + varianceActual + ")");
         System.out.println("Estimated: " + overallEstimatedHitRatioRounded + " (Variance: " + varianceEstimated + ")");
         System.out.println("PTS: " + overallPTSHitRatioRounded + " (Variance: " + variancePTS + ")");
+        System.out.println(
+                "MicroChronos: " + overallMicroChronosHitRatioRounded + " (Variance: " + varianceMicroChronos + ")");
     }
 
     private static double calculateVariance(List<Double> hitRatios, double mean) {

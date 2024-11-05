@@ -8,6 +8,9 @@ public class PageStats {
     private long firstAccessTime;
     private long PTSScore;
 
+    // For MicroChronos, store the earliest interval index the page was accessed in
+    private int microChronosIntervalIndex;
+
     // Set that contains indexes of subintervals in which the page was accessed
     private Set<Integer> subintervalIndexes;
 
@@ -16,6 +19,7 @@ public class PageStats {
         this.accessCount = 0;
         this.firstAccessTime = Long.MAX_VALUE;
         this.PTSScore = 0;
+        this.microChronosIntervalIndex = Integer.MAX_VALUE; // Initialize to max value
         this.subintervalIndexes = new HashSet<>();
     }
 
@@ -65,5 +69,17 @@ public class PageStats {
 
     public boolean subintervalIndexesContain(int subintervalIndex) {
         return this.subintervalIndexes.contains(subintervalIndex);
+    }
+
+    // MicroChronos methods
+    public int getMicroChronosIntervalIndex() {
+        return microChronosIntervalIndex;
+    }
+
+    public void setMicroChronosIntervalIndex(int microChronosIntervalIndex) {
+        // Keep the earliest interval index
+        if (microChronosIntervalIndex < this.microChronosIntervalIndex) {
+            this.microChronosIntervalIndex = microChronosIntervalIndex;
+        }
     }
 }

@@ -12,11 +12,15 @@ public class IntervalAnalyzer {
     private int lineLength = -1;
     private long subIntervalDuration; // Duration of each sub-interval for PTS scoring
 
+    // MicroChronos sub-intervals end times
+    private List<Long> microChronosSubIntervalEndTimes;
+
     public IntervalAnalyzer(List<File> traceFiles, long subIntervalDuration) {
         this.traceFiles = traceFiles;
         this.subIntervalDuration = subIntervalDuration;
         this.pageStatsMap = new ConcurrentHashMap<>();
         this.filePositions = new ConcurrentHashMap<>();
+        this.microChronosSubIntervalEndTimes = new ArrayList<>();
 
         // Initialize file positions to the start of each file
         for (File file : traceFiles) {
@@ -37,6 +41,9 @@ public class IntervalAnalyzer {
         this.intervalStart = intervalStart;
         this.intervalEnd = intervalEnd;
         this.pageStatsMap.clear();
+
+        // Compute MicroChronos sub-interval ends
+        computeMicroChronosSubIntervals();
 
         ExecutorService executor = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
         List<Future<Void>> futures = new ArrayList<>();
@@ -59,14 +66,58 @@ public class IntervalAnalyzer {
         executor.shutdown();
     }
 
+    private void computeMicroChronosSubIntervals() {
+        long minSubIntervalDuration = subIntervalDuration / 32;
+        if (minSubIntervalDuration == 0) {
+            minSubIntervalDuration = 1; // Ensure minimum duration is at least 1 tick
+        }
+
+        long currentSubIntervalDuration = subIntervalDuration;
+        long cumulativeTime = intervalStart;
+
+        while (currentSubIntervalDuration >= minSubIntervalDuration) {
+            cumulativeTime += currentSubIntervalDuration;
+            if (cumulativeTime >= intervalEnd) {
+                microChronosSubIntervalEndTimes.add(intervalEnd);
+                return;
+            } else {
+                microChronosSubIntervalEndTimes.add(cumulativeTime);
+            }
+            currentSubIntervalDuration /= 2;
+            if (currentSubIntervalDuration == 0) {
+                currentSubIntervalDuration = 1; // Avoid division by zero
+            }
+        }
+
+        // Fill the remaining interval with sub-intervals of minSubIntervalDuration
+        while (cumulativeTime < intervalEnd) {
+            cumulativeTime += minSubIntervalDuration;
+            if (cumulativeTime >= intervalEnd) {
+                microChronosSubIntervalEndTimes.add(intervalEnd);
+                break;
+            } else {
+                microChronosSubIntervalEndTimes.add(cumulativeTime);
+            }
+        }
+    }
+
+    private int getMicroChronosIntervalIndex(long timestamp) {
+        int index = Collections.binarySearch(microChronosSubIntervalEndTimes, timestamp);
+        if (index >= 0) {
+            return index;
+        } else {
+            return -index - 1;
+        }
+    }
+
     private void analyzeFile(File file) throws IOException {
         long filePosition = filePositions.get(file);
         try (BufferedReader reader = new BufferedReader(new FileReader(file))) {
             // Skip lines until reaching the last position
             long bytesToSkip = filePosition * lineLength;
 
-            // To avoid bad math or lines with different lengths, we skip a bit less than
-            // the calculated bytes
+            // To avoid bad math or lines with different lengths, we skip a
+            // bit less than the calculated bytes
             // This is a trade-off between performance and accuracy
             bytesToSkip -= (bytesToSkip / 100);
 
@@ -104,9 +155,17 @@ public class IntervalAnalyzer {
                             v.setFirstAccessTime(timestamp);
                         }
 
-                        // Calculate sub-interval index
-                        int subIntervalIndex = (int) ((timestamp - intervalStart) / subIntervalDuration);
-                        v.incrementPTSScore(subIntervalIndex);
+                        // Calculate PTS sub-interval index
+                        int ptsSubIntervalIndex = (int) ((timestamp - intervalStart) / subIntervalDuration);
+                        v.incrementPTSScore(ptsSubIntervalIndex);
+
+                        // Calculate MicroChronos interval index
+                        int microChronosIntervalIndex = getMicroChronosIntervalIndex(timestamp);
+                        // Only set it if it's the earliest interval
+                        if (v.getMicroChronosIntervalIndex() == Integer.MAX_VALUE
+                                || microChronosIntervalIndex < v.getMicroChronosIntervalIndex()) {
+                            v.setMicroChronosIntervalIndex(microChronosIntervalIndex);
+                        }
 
                         return v;
                     });
@@ -134,6 +193,12 @@ public class IntervalAnalyzer {
     public List<PageStats> getHotPagesByPTSScore() {
         List<PageStats> hotPages = new ArrayList<>(pageStatsMap.values());
         hotPages.sort(Comparator.comparingLong(PageStats::getPTSScore).reversed());
+        return hotPages;
+    }
+
+    public List<PageStats> getHotPagesByMicroChronos() {
+        List<PageStats> hotPages = new ArrayList<>(pageStatsMap.values());
+        hotPages.sort(Comparator.comparingInt(PageStats::getMicroChronosIntervalIndex));
         return hotPages;
     }
 

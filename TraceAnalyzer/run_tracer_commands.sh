@@ -12,7 +12,7 @@ if [ -f "$output_log" ]; then
 fi
 
 # Execute each command in the input file
-while IFS= read -r cmd
+while IFS= read -r cmd || [ -n "$cmd" ]
 do
     echo "Running command: $cmd" | tee -a "$output_log"
     eval "$cmd" 2>&1 | tee -a "$output_log"

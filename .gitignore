@@ -42,3 +42,4 @@ TraceAnalyzer/bin/*.class
 TraceAnalyzer/output
 TraceAnalyzer/visualizer/plots/*
 MyPinTool/benchmark_time.txt
+TraceAnalyzer/tracer_output.log

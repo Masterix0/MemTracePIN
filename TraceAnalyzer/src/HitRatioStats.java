@@ -4,12 +4,15 @@ public class HitRatioStats {
     double actualHitRatio;
     double estimatedHitRatio;
     double ptsHitRatio;
+    double microChronosHitRatio;
 
-    public HitRatioStats(double actualHitRatio, double estimatedHitRatio, double ptsHitRatio, long numPagesAccessed,
-            long numAccesses) {
+    public HitRatioStats(double actualHitRatio, double estimatedHitRatio, double ptsHitRatio,
+            double microChronosHitRatio,
+            long numPagesAccessed, long numAccesses) {
         this.actualHitRatio = actualHitRatio;
         this.estimatedHitRatio = estimatedHitRatio;
         this.ptsHitRatio = ptsHitRatio;
+        this.microChronosHitRatio = microChronosHitRatio;
         this.numPagesAccessed = numPagesAccessed;
         this.numAccesses = numAccesses;
     }
@@ -36,6 +39,14 @@ public class HitRatioStats {
 
     public void setPTSHitRatio(double ptsHitRatio) {
         this.ptsHitRatio = ptsHitRatio;
+    }
+
+    public double getMicroChronosHitRatio() {
+        return microChronosHitRatio;
+    }
+
+    public void setMicroChronosHitRatio(double microChronosHitRatio) {
+        this.microChronosHitRatio = microChronosHitRatio;
     }
 
     public long getNumPagesAccessed() {

@@ -74,6 +74,7 @@ for csv_file in csv_files:
     df['actual_hits'] = df['total_access_count'] * df['actual_accesses_dram_hit_ratio']
     df['estimated_hits'] = df['total_access_count'] * df['estimated_dram_hit_ratio']
     df['pts_hits'] = df['total_access_count'] * df['pts_dram_hit_ratio']
+    df['microchronos_hits'] = df['total_access_count'] * df['microchronos_dram_hit_ratio']
 
     # Store the dataframe and workload info
     dataframes[workload_name] = df
@@ -93,7 +94,8 @@ rows = math.ceil(num_files / cols)
 metrics = [
     ('actual_accesses_dram_hit_ratio', 'Total Number Of Accesses Ranking', {'marker': 'o', 'linestyle': '-'}),
     ('estimated_dram_hit_ratio', 'First Access Time Ranking', {'marker': 'x', 'linestyle': '--'}),
-    ('pts_dram_hit_ratio', 'Simulated PTS Scoring Ranking', {'marker': 's', 'linestyle': ':'})
+    ('pts_dram_hit_ratio', 'Simulated PTS Scoring Ranking', {'marker': 's', 'linestyle': ':'}),
+    ('microchronos_dram_hit_ratio', 'MicroChronos Ranking', {'marker': '^', 'linestyle': '-.'})
 ]
 
 # Function to generate subplot titles from workload info
@@ -220,28 +222,31 @@ def create_bar_charts_collage(filename):
         df = dataframes[workload_name]
         ax = axes[i]
 
-        # Ensure 'actual_hits' and other hit columns exist
+        # Ensure hit columns exist
         if 'actual_hits' not in df.columns:
             # Calculate hits for each method
             df['actual_hits'] = df['total_access_count'] * df['actual_accesses_dram_hit_ratio']
             df['estimated_hits'] = df['total_access_count'] * df['estimated_dram_hit_ratio']
             df['pts_hits'] = df['total_access_count'] * df['pts_dram_hit_ratio']
+            df['microchronos_hits'] = df['total_access_count'] * df['microchronos_dram_hit_ratio']
 
         # Calculate totals for this workload
         total_accesses = df['total_access_count'].sum()
         total_actual_hits = df['actual_hits'].sum()
         total_estimated_hits = df['estimated_hits'].sum()
         total_pts_hits = df['pts_hits'].sum()
+        total_microchronos_hits = df['microchronos_hits'].sum()
 
         # Calculate hit ratios
         actual_ratio = total_actual_hits / total_accesses
         estimated_ratio = total_estimated_hits / total_accesses
         pts_ratio = total_pts_hits / total_accesses
+        microchronos_ratio = total_microchronos_hits / total_accesses
 
         # Prepare data for the bar chart
-        methods = ['Total Number\nOf Accesses', 'First Access\nTime', 'Simulated PTS\nScoring']
-        hit_ratios = [actual_ratio, estimated_ratio, pts_ratio]
-        colors = ['blue', 'orange', 'green']
+        methods = ['Total Number\nOf Accesses', 'First Access\nTime', 'Simulated PTS\nScoring', 'MicroChronos\nScoring']
+        hit_ratios = [actual_ratio, estimated_ratio, pts_ratio, microchronos_ratio]
+        colors = ['blue', 'orange', 'green', 'purple']
 
         # Create the bar chart
         bars = ax.bar(methods, hit_ratios, color=colors)

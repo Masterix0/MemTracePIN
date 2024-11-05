@@ -22,15 +22,22 @@ The tool calculates DRAM hit ratios and provides detailed metrics for each inter
 
 ## Features
 
-- **Simulates Page-Ranking Mechanisms**: Implements three page-ranking strategies:
+- **Simulates Page-Ranking Mechanisms**: Implements four page-ranking strategies:
   - **Total Number of Accesses**: Ranks pages based on total access count.
   - **First Access Time**: Ranks pages based on the time of first access.
-  - **Page Table Scan (PTS) Scoring**: Ranks pages using PTS scoring over sub-intervals.
+  - **Page Table Scan (PTS) Scoring**: Ranks pages using an approximation of PTS scoring over sub-intervals.
+  - **MicroChronos**: Approximates the ranking based on an approximation of the MicroChronos algorithm, which approximates first access time using variable sub-intervals.
+
 - **Interval-Based Analysis**: Divides execution into user-defined intervals for granular analysis.
+
 - **Customizable Parameters**: Allows adjustment of DRAM capacity percentage, interval durations, and sub-interval durations.
+
 - **Multi-threaded Processing**: Utilizes multi-threading to efficiently process large trace files.
+
 - **Detailed Output**: Generates CSV files with metrics for each interval, including DRAM hit ratios and access counts.
+
 - **Variance Calculation**: Computes overall DRAM hit ratios and variance across intervals.
+
 - **Visualization Support**: Compatible with a Python script to generate graphs from the output CSV files.
 
 ## Requirements
@@ -51,7 +58,7 @@ The tool calculates DRAM hit ratios and provides detailed metrics for each inter
 2. **Navigate to the Directory**:
 
    ```bash
-   cd cd MemTracePIN/TraceAnalyzer
+   cd MemTracePIN/TraceAnalyzer
    ```
 
 3. **Compile the Project**:
@@ -98,7 +105,7 @@ java -cp bin TraceAnalyzer <workload_name> <real_time_interval_ms> <real_time_ru
   Fraction of accessed pages assumed to fit in DRAM during each interval (e.g., `0.3` for 30%).
 
 - **`sub_interval_duration_ms`**:  
-  Duration of each sub-interval in milliseconds for PTS scoring.
+  Duration of each sub-interval in milliseconds for PTS scoring and as the base duration for MicroChronos sub-intervals.
 
 ### Example
 
@@ -180,6 +187,7 @@ my_workload-3-1.00-0.30.csv
 - `actual_accesses_dram_hit_ratio`
 - `estimated_dram_hit_ratio`
 - `pts_dram_hit_ratio`
+- `microchronos_dram_hit_ratio`
 
 **Overall DRAM Hit Ratios and Variance**:
 

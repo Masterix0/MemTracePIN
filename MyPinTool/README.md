@@ -142,22 +142,6 @@ Intel® PIN is a dynamic binary instrumentation tool that MemTracePIN uses to in
 
 ## Usage
 
-To run the tool, use the following command:
-
-```bash
-./run_and_sort.sh <executable_and_arguments>
-```
-
-Replace `<executable_and_arguments>` with the executable and arguments you want to trace.
-
-This will run the tracer and save the output to the `output` directory.
-It will then the trace execution time to terminal.
-Finally, the output will be sorted and saved to the `sorted` directory, with the original files being deleted.
-
-The output files will be sorted by timestamp, using the gnu/unix `sort` command.
-
-## Usage
-
 ### Running the Tracer
 
 To trace an executable, use the provided `run_and_sort.sh` script.
