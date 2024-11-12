@@ -1,8 +1,1 @@
-time java -Xmx20g -cp bin TraceAnalyzer gapbs_g16_n10 21 73 563372 /home/masterix/Tese/TracingTool/MemTracePIN/MyPinTool/sorted/ 0.2 10
-time java -Xmx20g -cp bin TraceAnalyzer gapbs_g16_n10 21 73 563372 /home/masterix/Tese/TracingTool/MemTracePIN/MyPinTool/sorted/ 0.2 15
-time java -Xmx20g -cp bin TraceAnalyzer gapbs_g16_n10 21 73 563372 /home/masterix/Tese/TracingTool/MemTracePIN/MyPinTool/sorted/ 0.5 10
-time java -Xmx20g -cp bin TraceAnalyzer gapbs_g16_n10 21 73 563372 /home/masterix/Tese/TracingTool/MemTracePIN/MyPinTool/sorted/ 0.5 15
-time java -Xmx20g -cp bin TraceAnalyzer gapbs_g16_n10 35 73 563372 /home/masterix/Tese/TracingTool/MemTracePIN/MyPinTool/sorted/ 0.2 10
-time java -Xmx20g -cp bin TraceAnalyzer gapbs_g16_n10 35 73 563372 /home/masterix/Tese/TracingTool/MemTracePIN/MyPinTool/sorted/ 0.2 15
-time java -Xmx20g -cp bin TraceAnalyzer gapbs_g16_n10 35 73 563372 /home/masterix/Tese/TracingTool/MemTracePIN/MyPinTool/sorted/ 0.5 10
-time java -Xmx20g -cp bin TraceAnalyzer gapbs_g16_n10 35 73 563372 /home/masterix/Tese/TracingTool/MemTracePIN/MyPinTool/sorted/ 0.5 15
+
